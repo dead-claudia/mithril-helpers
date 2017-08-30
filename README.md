@@ -13,15 +13,9 @@ yarn add git+https://github.com/isiahmeadows/mithril-helpers
 
 ## Issues/Contributing
 
-If you come up with any other things that you feel should be included, or you find a bug in something I did, please file an issue, and I'll consider the use case.
+If you come up with any other things that you feel should be included, or you find a bug in something I did, please file an issue, and I'll consider the use case. In particular, I could use some assistance with ensuring the stuff in `/migrate` actually works, so if you find bugs in it, please tell me right away, and I'll address it.
 
-If you want to implement something yourself, definitely go for it and send a PR. Just note the following (for legal reasons):
-
-1. If you're adding a new migration file, you *must* be able to and agree to release it under an equivalent license to Mithril's (MIT at the time of writing) for at least the version you're migrating from.
-2. If you're adding a new utility, you *must* be able to and agree to license it under the ISC.
-3. If you're modifying an existing file, you *must* be able to and agree to license your contributions under the file's existing license.
-
-If you have any questions about this, feel free to ask, and I'll try to get you an answer for what applies.
+If you want to implement something yourself, definitely go for it and send a PR. Just note the following (for legal reasons): when you submit a pull request, you agree to license your contribution under the relevant license(s) in this repository, and you also agree that you have sufficient rights to do so.
 
 ## API
 
