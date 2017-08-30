@@ -1,0 +1,8 @@
+{
+  "name": "mithril-helpers",
+  "main": "index.js",
+  "license": "(ISC or MIT)",
+  "peerDependencies": {
+    "mithril": "*"
+  }
+}
