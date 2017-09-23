@@ -47,19 +47,34 @@ I also threw in a couple niceities to make it even better.
 
 Exposes a `SelfSufficient` class, for making self-sufficient (i.e. no dependency on `m.redraw`) object/closure and class components, respectively. It's also useful if you're using `m.render` directly, since you don't have to worry about implementing batching and all the other annoying crap.
 
-- `new SelfSufficient(tag?, attrs?)` - Create a new instance to do subtree management.
-    - `tag` is the tag you want to create your wrapper element with.
+- `state = new SelfSufficient(tag?, attrs?)` - Create a new instance to do subtree management.
+    - `tag` is the tag you want to create your wrapper element with, defaulting to `div`.
     - `attrs` is the attrs you want to add to your wrapper element.
-    - Both `tag` and `attrs` check their type and invoke the default only if their types don't match, so it's safe to subclass/subtype for your components.
+    - Both `tag` and `attrs` check their type and invoke the default only if their types don't match, so it's safe to subclass/subtype this for your components without implementing a constructor.
 
-It uses a member `render` function in place of your `view`, and offers a `redraw` helper method.
+- `state.forceRedraw(vnode)` - Force a synchronous redraw for this vnode.
+
+- `state.redraw(vnode)` - Schedule a redraw for this vnode.
+
+- `state.link(vnode, handler)` - Wrap an event handler to implicitly redraw iff `e.redraw !== false`, much like how Mithril normally does implicitly when you use `m.mount`.
+
+- `state.view(vnode)` - This is the `view` you use in your component.
+
+- `state.onbeforeupdate(vnode, old)` - This is the `onbeforeupdate` you use in your component. If you need to override this (say, in a subclass), you'll need to call the original `onbeforeupdate` with the arguments. (It always returns `true`)
+
+When you call `state.redraw(vnode)`, when it redraws, it also invokes a few of Mithril's lifecycle methods:
+
+- Before it attempts to redraw, it calls `state.onbeforeupdate(vnode, vnode)` if it exists. If this method exists and returns `false`, then no redraw is attempted.
+- After it redraws, it calls `state.onupdate(vnode)` if it exists.
+
+Note: this does *not* support `vnode.state = ...`, although you shouldn't be using that, anyways.
 
 Here's a few examples of how it's used:
 
 ```js
 // Objects
 const Comp = {
-    __proto__: new m.helpers.SelfSufficient("div"),
+    __proto__: new m.helpers.SelfSufficient(),
     oninit() { this.clicked = false },
     render(vnode) {
         return [
@@ -67,10 +82,7 @@ const Comp = {
             this.clicked
                 ? m(".bar.fail", "Why did you click me?!?")
                 : m(".bar", {
-                    onclick: () => {
-                        this.clicked = true
-                        this.redraw(vnode)
-                    }
+                    onclick: this.link(vnode, () => { this.clicked = true }),
                 }, "Just kidding, nothing to see here..."),
         ]
     }
@@ -79,19 +91,16 @@ const Comp = {
 // Closures
 function Comp(vnode) {
     var clicked = false
-    var state = new m.helpers.SelfSufficient("div")
+    var state = new m.helpers.SelfSufficient()
 
     return Object.assign({}, state, {
-        render() {
+        render(vnode) {
             return [
                 m(".foo", "What is this?"),
                 clicked
                     ? m(".bar.fail", "Why did you click me?!?")
                     : m(".bar", {
-                        onclick: () => {
-                            clicked = true
-                            state.redraw(vnode)
-                        }
+                        onclick: state.link(vnode, () => { clicked = true }),
                     }, "Just kidding, nothing to see here..."),
             ]
         }
@@ -101,20 +110,17 @@ function Comp(vnode) {
 // Classes
 class Comp extends m.helpers.SelfSufficient {
     constructor() {
-        super("div")
+        super()
         this.clicked = false
     }
 
-    render() {
+    render(vnode) {
         return [
             m(".foo", "What is this?"),
             this.clicked
                 ? m(".bar.fail", "Why did you click me?!?")
                 : m(".bar", {
-                    onclick: () => {
-                        this.clicked = true
-                        this.redraw(vnode)
-                    }
+                    onclick: this.link(() => { this.clicked = true }),
                 }, "Just kidding, nothing to see here..."),
         ]
     }
