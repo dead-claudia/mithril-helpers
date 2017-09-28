@@ -60,7 +60,7 @@ Exposes a `SelfSufficient` class, for making self-sufficient (i.e. no dependency
 
 - `state.view(vnode)` - This is the `view` you use in your component.
 
-- `state.onbeforeupdate(vnode, old)` - This is the `onbeforeupdate` you use in your component. If you need to override this (say, in a subclass), you'll need to call the original `onbeforeupdate` with the arguments. (It always returns `true`)
+- `state.onbeforeupdate(vnode, old)` - This is the `onbeforeupdate` you use in your component. If you need to override this (say, in a subclass), you'll need to call the original `onbeforeupdate` with the arguments to cancel any existing redraw. (It always returns `true`)
 
 When you call `state.redraw(vnode)`, when it redraws, it also invokes a few of Mithril's lifecycle methods:
 
