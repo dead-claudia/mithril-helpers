@@ -25,7 +25,7 @@ If you wish to bundle these, you can just concatenate the ones you use or use Br
 
 ### mithril-helpers/censor
 
-Exposes `censor(attrs)`, which removes all of Mithril's magic attributes from an object (making a copy if necessary to avoid actually modifying the object), so you may safely pass it directly as an attribute object to other methods. Helpful to [avoid overly restrictive interfaces](https://mithril.js.org/components.html#avoid-restrictive-interfaces) without running into odd buggy behavior with magic methods.
+Exposes `censor(attrs)`, which removes all of Mithril's magic attributes from an object (making a copy if necessary to avoid actually modifying the object), so you may safely pass it directly as an attribute object to other methods. Helpful to [avoid overly restrictive interfaces](https://mithril.js.org/components.html#avoid-restrictive-interfaces) without running into [odd buggy behavior with magic methods](https://github.com/MithrilJS/mithril.js/issues/1775).
 
 ```js
 return m("div", m.helpers.censor(vnode.attrs), [...children])
