@@ -58,7 +58,7 @@ Exposes a `SelfSufficient` class, for making self-sufficient (i.e. no dependency
 
 - `state.link(vnode, handler)` - Wrap an event handler to implicitly redraw iff `e.redraw !== false`, much like how Mithril normally does implicitly when you use `m.mount`.
 
-- `state.view(vnode)` - This is the `view` you use in your component.
+- `state.render(vnode)` - This is the `view` you use in your component.
 
 - `state.onbeforeupdate(vnode, old)` - This is the `onbeforeupdate` you use in your component. If you need to override this (say, in a subclass), you'll need to call the original `onbeforeupdate` with the arguments to cancel any existing redraw. (It always returns `true`)
 
