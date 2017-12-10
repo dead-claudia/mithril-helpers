@@ -3,8 +3,14 @@
   "version": "0.0.0",
   "main": "index.js",
   "license": "(ISC OR MIT)",
+  "scripts": {
+    "test": "ospec tests/"
+  },
   "peerDependencies": {
     "@types/mithril": "1",
     "mithril": "1"
+  },
+  "devDependencies": {
+    "mithril": "^1.1.6"
   }
 }
