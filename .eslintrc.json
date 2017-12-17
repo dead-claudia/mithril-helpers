@@ -1,8 +1,12 @@
 {
   "extends": "standard",
   "rules": {
+    "brace-style": ["off"],
+    "eqeqeq": ["off"],
     "indent": ["error", 4],
-    "quotes": ["error", "double"],
-    "no-undef": ["off"]
+    "no-redeclare": ["off"],
+    "no-undef": ["off"],
+    "one-var": ["off"],
+    "quotes": ["error", "double"]
   }
 }
