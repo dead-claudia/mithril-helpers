@@ -6,6 +6,6 @@
 /// <reference types="mithril" />
 import * as Mithril from "mithril";
 
-export {censor} from "./censor";
-export {store, Store, OnChange} from "./store";
-export {EventLike, Renderable, SelfSufficient} from "./self-sufficient";
+export {censor} from "./censor.d";
+export {makeStore, Store, OnChange} from "./store.d";
+export {EventLike, Renderable, SelfSufficient} from "./self-sufficient.d";

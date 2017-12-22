@@ -7,6 +7,8 @@
  */
 
 ;(function (factory) {
+    "use strict"
+
     if (typeof exports === "object" && exports != null) {
         factory(exports,
             require("mithril/hyperscript"),
@@ -110,7 +112,9 @@
 
     SelfSufficient.prototype.link = function (vnode, callback) {
         return function (e) {
-            callback(e)
+            if (typeof callback === "function") callback.call(this, e)
+            else callback.handleEvent(e)
+
             if (e.redraw !== false) {
                 e.redraw = false
                 SelfSufficient.prototype.redraw(vnode)

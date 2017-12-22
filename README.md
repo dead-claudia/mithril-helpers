@@ -7,8 +7,8 @@ Everything here is licensed under ISC except for the `/migrate` modules, whose l
 ## Installation
 
 ```
-npm install --save isiahmeadows/mithril-helpers
-yarn add git+https://github.com/isiahmeadows/mithril-helpers
+npm install --save isiahmeadows/mithril-helpers --save-exact
+yarn add git+https://github.com/isiahmeadows/mithril-helpers --exact
 ```
 
 ## Issues/Contributing
@@ -22,6 +22,11 @@ If you want to implement something yourself, definitely go for it and send a PR.
 Everything is exposed as submodules, where you can pull them all in piecemeal. They are available as both CommonJS modules (exported by name) and global scripts that attach themselves individually to `m.helpers`, where `m` is Mithril's main export. In addition, `index.js` is a CommonJS-only module bundling all of them except for what's in `/migrate`.
 
 If you wish to bundle these, you can just concatenate the ones you use or use Browserify/etc. to bundle them along with your app.
+
+- [`mithril-helpers/censor` - `censor(attrs)`](#mithril-helperscensor)
+- [`mithril-helpers/store` - `makeStore(initial?, onchange?)`](#mithril-helpersstore)
+- [`mithril-helpers/self-sufficient` - `new SelfSufficient(tag?, attrs?)`](#mithril-helpersself-sufficient)
+- [`mithril-helpers/migrate/v1` - Mithril v0.2 &rarr; v1 migration](#mithril-helpersmigratev1)
 
 ### mithril-helpers/censor
 
