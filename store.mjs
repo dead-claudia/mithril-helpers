@@ -13,10 +13,10 @@
 // variable.
 function makeObserved(store, onchange) {
     return {
-        get: function () { return store },
-        set: function (value) {
-            var old = store
-            var func = onchange
+        get: () => store,
+        set: value => {
+            const old = store
+            const func = onchange
 
             store = value
             if (func) {
@@ -38,8 +38,8 @@ export default function makeStore(store, onchange) {
         return makeObserved(store, onchange)
     } else {
         return {
-            get: function () { return store },
-            set: function (value) { return store = value },
+            get: () => store,
+            set: value => store = value,
         }
     }
 }

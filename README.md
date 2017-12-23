@@ -11,7 +11,7 @@ npm install --save isiahmeadows/mithril-helpers --save-exact
 yarn add git+https://github.com/isiahmeadows/mithril-helpers --exact
 ```
 
-Note: you *must* depend on exact Git hashes, since this package is completely unversioned. (For similar reasons, the package version will remain at `0.0.0`.) When upgrading, you should assess the diff for each file you use, to see if they require any special migration or not.
+Note: you *must* depend on exact Git hashes, since this package is completely unversioned, and could change in breaking ways at any point. (For similar reasons, the package version will remain at `0.0.0`.) When upgrading, you should assess the diff for each file you use, to see if they require any special migration or not.
 
 ## Issues/Contributing
 
@@ -57,97 +57,85 @@ I also threw in a couple niceities to make it even better.
 
 ### mithril-helpers/self-sufficient
 
-Exposes a `SelfSufficient` class, for making self-sufficient (i.e. no dependency on `m.redraw`) object/closure and class components, respectively. It's also useful if you're using `m.render` directly, since you don't have to worry about implementing batching and all the other annoying crap.
+Exposes a `SelfSufficient` component, for making self-sufficient (i.e. no dependency on `m.redraw`) object/closure and class components, respectively. It's also useful if you're using `m.render` directly, since you don't have to worry about implementing batching and all the other annoying crap.
 
-- `state = new SelfSufficient(tag?, attrs?)` - Create a new instance to do subtree management.
-    - `tag` is the tag you want to create your wrapper element with, defaulting to `div`.
-    - `attrs` is the attrs you want to add to your wrapper element.
-    - Both `tag` and `attrs` check their type and invoke the default only if their types don't match, so it's safe to subclass/subtype this for your components without implementing a constructor.
+- `m(SelfSufficient, {tag?, attrs?, oncreate?, ..., view})` - Create a new instance to do subtree management.
+    - `tag` is what you want the tag to be for your wrapper element. Any Mithril selector will work.
+    - `attrs` is what you want the attributes to be for your wrapper element.
+    - `view` is what you want your subtree to look like. It's a function rather than a raw tree, because we can't reuse Mithril nodes safely. Note that you *must* return an actual DOM node.
+    - You can use lifecycle attributes like `oncreate`, `onbeforeupdate`, and `onupdate` to update vnodes at the right time.
+    - You can use `vnode.dom` within callbacks.
+    - Any hooks and underscore-prefixed properties are reserved.
 
-- `state.forceRedraw(vnode)` - Force a synchronous redraw for this vnode.
+- `vnode.state.safe()` - Whether it's safe to invoke `redrawSync`.
 
-- `state.redraw(vnode)` (Alias: `state._redraw(vnode)`) - Schedule a redraw for this vnode.
+- `vnode.state.redraw()` - Schedule a redraw for this subtree.
 
-- `state.link(vnode, handler)` - Wrap an event handler to implicitly redraw iff `e.redraw !== false`, much like how Mithril normally does implicitly when you use `m.mount`.
+- `vnode.state.redrawSync()` - Force a synchronous redraw for this vnode.
 
-- `state.render(vnode)` - This is the `view` you use in your component.
+- `vnode.state.link(handler)` - Wrap an event handler to implicitly redraw iff `e.redraw !== false`, much like how Mithril normally does implicitly when you use `m.mount`.
 
-- `state.onbeforeupdate(vnode, old)` - This is the `onbeforeupdate` you use in your component. If you need to override this (say, in a subclass), you'll need to call the original `onbeforeupdate` with the arguments to cancel any existing redraw. (It always returns `true`)
+When you call `vnode.state.redraw(vnode)`, when it redraws, it also invokes a few of Mithril's lifecycle methods:
 
-When you call `state.redraw(vnode)`, when it redraws, it also invokes a few of Mithril's lifecycle methods:
-
-- Before it attempts to redraw, it calls `state.onbeforeupdate(vnode, vnode)` if it exists. If this method exists and returns `false`, then no redraw is attempted.
-- After it redraws, it calls `state.onupdate(vnode)` if it exists.
-
-Note: this does *not* support `vnode.state = ...`, although you shouldn't be using that, anyways.
+- Before it attempts to redraw locally, it calls `vnode.state.onbeforeupdate(vnode, vnode)` if it exists. If this method exists and returns `false`, then no redraw is attempted.
+- After it redraws, it calls `vnode.state.onupdate(vnode)` if it exists.
 
 Here's a few examples of how it's used:
 
 ```js
 // Objects
 const Comp = {
-    __proto__: new m.helpers.SelfSufficient(),
     oninit() { this.clicked = false },
-    render(vnode) {
-        return [
+    view(vnode) {
+        return m(m.helpers.SelfSufficient, {view: ({state}) => [
             m(".foo", "What is this?"),
             this.clicked
                 ? m(".bar.fail", "Why did you click me?!?")
                 : m(".bar", {
-                    onclick: this.link(vnode, () => { this.clicked = true }),
+                    onclick: state.link(() => { this.clicked = true }),
                 }, "Just kidding, nothing to see here..."),
-        ]
+        ]})
     }
 }
 
 // Closures
-function Comp(vnode) {
+function Comp() {
     var clicked = false
-    var state = new m.helpers.SelfSufficient()
 
-    return Object.assign({}, state, {
-        render(vnode) {
-            return [
+    return {
+        view(vnode) {
+            return m(m.helpers.SelfSufficient, {view: ({state}) => [
                 m(".foo", "What is this?"),
-                clicked
+                this.clicked
                     ? m(".bar.fail", "Why did you click me?!?")
                     : m(".bar", {
-                        onclick: state.link(vnode, () => { clicked = true }),
+                        onclick: state.link(() => { this.clicked = true }),
                     }, "Just kidding, nothing to see here..."),
-            ]
+            ]})
         }
     })
 }
 
 // Classes
-class Comp extends m.helpers.SelfSufficient {
+class Comp {
     constructor() {
-        super()
         this.clicked = false
     }
 
-    render(vnode) {
-        return [
+    view(vnode) {
+        return m(m.helpers.SelfSufficient, {view: ({state}) => [
             m(".foo", "What is this?"),
             this.clicked
                 ? m(".bar.fail", "Why did you click me?!?")
                 : m(".bar", {
-                    onclick: this.link(() => { this.clicked = true }),
+                    onclick: state.link(() => { this.clicked = true }),
                 }, "Just kidding, nothing to see here..."),
-        ]
+        ]})
     }
 }
 ```
 
-Note that this requires a `Set` polyfill, but it only uses the following features (so you don't actually need a full polyfill to use it):
-
-- `new Set()`
-- `new Set(set)`
-- `set.add(item)` (ignoring return value)
-- `set.remove(item)` (ignoring return value)
-- `set.clear()` (ignoring return value)
-- `set.entries()`
-- `set.size` (only compared against 0)
+Note that this requires a `Set` polyfill to work.
 
 ### mithril-helpers/redraw
 

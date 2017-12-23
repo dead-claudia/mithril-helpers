@@ -12,10 +12,10 @@ import mithril from "mithril"
 
 // Ideally, this would use a hook to know when Mithril starts/finishes
 // redrawing.
-var p = Promise.resolve()
+const p = Promise.resolve()
 
 export default function makeRedraw(state) {
-    var ready = false
+    let ready = false
 
     function redraw(vnode) {
         if (ready) {
@@ -24,7 +24,7 @@ export default function makeRedraw(state) {
         }
     }
 
-    redraw.ready = function () {
+    redraw.ready = () => {
         ready = true
     }
 

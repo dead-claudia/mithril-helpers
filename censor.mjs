@@ -3,8 +3,8 @@
  * your interfaces as unrestrictive as possible.
  */
 
-var magicKey = /^key$|^on(init|create|(before)?(update|remove))$/
-var hasOwn = {}.hasOwnProperty
+const magicKey = /^key$|^on(init|create|(before)?(update|remove))$/
+const hasOwn = {}.hasOwnProperty
 
 export default function censor(attrs) {
     if (
@@ -19,7 +19,7 @@ export default function censor(attrs) {
         return attrs
     }
 
-    var result = {}
+    const result = {}
 
     for (var i in attrs) {
         if (hasOwn.call(attrs, i) && !magicKey.test(attrs)) {
