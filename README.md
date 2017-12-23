@@ -11,11 +11,15 @@ npm install --save isiahmeadows/mithril-helpers --save-exact
 yarn add git+https://github.com/isiahmeadows/mithril-helpers --exact
 ```
 
+Note: you *must* depend on exact Git hashes, since this package is completely unversioned. (For similar reasons, the package version will remain at `0.0.0`.) When upgrading, you should assess the diff for each file you use, to see if they require any special migration or not.
+
 ## Issues/Contributing
 
 If you come up with any other things that you feel should be included, or you find a bug in something I did, please file an issue, and I'll consider the use case. In particular, I could use some assistance with ensuring the stuff in `/migrate` actually works, so if you find bugs in it, please tell me right away, and I'll address it.
 
 If you want to implement something yourself, definitely go for it and send a PR. Just note the following (for legal reasons): when you submit a pull request, you agree to license your contribution under the relevant license(s) in this repository, and you also agree that you have sufficient rights to do so.
+
+Also, make sure that if you want to add a helper, your helpers do one thing and one thing only. They should be almost zero-cost to add to a project.
 
 ## API
 
@@ -134,6 +138,16 @@ class Comp extends m.helpers.SelfSufficient {
     }
 }
 ```
+
+Note that this requires a `Set` polyfill, but it only uses the following features (so you don't actually need a full polyfill to use it):
+
+- `new Set()`
+- `new Set(set)`
+- `set.add(item)` (ignoring return value)
+- `set.remove(item)` (ignoring return value)
+- `set.clear()` (ignoring return value)
+- `set.entries()`
+- `set.size` (only compared against 0)
 
 ### mithril-helpers/redraw
 
