@@ -29,9 +29,9 @@
     function makeRedraw(state) {
         var ready = false
 
-        function redraw(vnode) {
+        function redraw() {
             if (ready) {
-                if (state != null) state._redraw(vnode)
+                if (state != null) state.redraw()
                 else p.then(mithril.redraw)
             }
         }

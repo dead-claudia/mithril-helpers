@@ -116,6 +116,10 @@
             this._ = vnode
         },
 
+        onupdate: function () {
+            locked = false
+        },
+
         onremove: function () {
             states.delete(this)
             this._ = undefined
@@ -123,7 +127,8 @@
 
         view: function (vnode) {
             this._ = vnode
-            return h(this._.attrs.tag, this._.attrs.attrs,
+            locked = true
+            return h(this._.attrs.tag || "div", this._.attrs.attrs,
                 this._.attrs.view(this._)
             )
         },

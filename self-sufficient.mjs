@@ -102,6 +102,10 @@ export default const SelfSufficient = {
         this._ = vnode
     },
 
+    onupdate() {
+        locked = false
+    },
+
     onremove() {
         states.delete(this)
         this._ = undefined
@@ -109,7 +113,8 @@ export default const SelfSufficient = {
 
     view(vnode) {
         this._ = vnode
-        return h(this._.attrs.tag, this._.attrs.attrs,
+        locked = true
+        return h(this._.attrs.tag || "div", this._.attrs.attrs,
             this._.attrs.view(this._)
         )
     },

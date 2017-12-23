@@ -16,4 +16,12 @@ export interface OnChange<T> {
 /**
  * Create a new store, optionally with a change observer.
  */
+export default function makeStore<T>(
+    initial?: void,
+    onchange?: OnChange<T | void>
+): Store<T | void>;
+
+/**
+ * Create a new store, optionally with a change observer.
+ */
 export default function makeStore<T>(initial: T, onchange?: OnChange<T>): Store<T>;
