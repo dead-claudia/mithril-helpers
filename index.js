@@ -12,6 +12,8 @@ if (typeof exports !== "object" || !exports) {
     )
 }
 
-exports.censor = require("./censor.js").censor
-exports.SelfSufficient = require("./self-sufficient.js").SelfSufficient
-exports.makeStore = require("./store.js").makeStore
+exports.censor = require("./censor.js")
+exports.SelfSufficient = require("./self-sufficient.js")
+exports.makeStore = require("./store.js")
+exports.makeRedraw = require("./redraw.js")
+exports.makeRedrawLocal = require("./redraw-local.js")

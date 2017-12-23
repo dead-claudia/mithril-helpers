@@ -10,7 +10,7 @@
     "use strict"
 
     if (typeof exports === "object" && exports) {
-        exports.makeStore = makeStore
+        module.exports = makeStore
     } else if (typeof m !== "function") {
         throw new Error("Mithril must be loaded first!")
     } else {

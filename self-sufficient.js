@@ -4,22 +4,24 @@
  * own right if you're using `m.render` directly, since you can use this to
  * batch your redraws in child components, and it's also useful for implementing
  * subtree redraws.
+ *
+ * Note: this is very highly optimized, since
  */
 
 ;(function (factory) {
     "use strict"
 
-    if (typeof exports === "object" && exports != null) {
-        factory(exports,
+    if (typeof module === "object" && module && module.exports) {
+        module.exports = factory(
             require("mithril/hyperscript"),
             require("mithril/render")
         )
     } else if (typeof m === "function") {
-        factory(m.helpers || (m.helpers = {}), m, m.render)
+        (m.helpers || (m.helpers = {})).SelfSufficient = factory(m, m.render)
     } else {
         throw new Error("Mithril must be loaded first!")
     }
-})(function (exports, h, render) {
+})(function (h, render) {
     "use strict"
 
     // Get the correct scheduling function
@@ -28,8 +30,8 @@
         : setTimeout
 
     // Set up the initial state
-    var last = 0, locked = false
-    var vnodes
+    var last = 0
+    var locked = false
 
     function execRedraw(vnode) {
         if (typeof vnode.state.onbeforeupdate === "function") {
@@ -42,31 +44,105 @@
         }
     }
 
-    function invokeRedraw() {
-        var queued = vnodes
-        vnodes = undefined
+    function invokeList(iter) {
         last = Date.now()
+        locked = true
 
-        // Store the length now, since it might grow later.
-        for (var i = 0; i < queued.length; i++) {
-            locked = true
-            // We need at least some fault tolerance - it'd be weird if
-            // someone else's errors prevented one of our redraws.
+        for (var next = iter.next(); !next.done; next = iter.next()) {
+            // We need at least some fault tolerance - it'd be weird if someone
+            // else's errors prevented one of our redraws.
             try {
-                execRedraw(queued[i])
+                execRedraw(next.value)
             } catch (e) {
                 setTimeout(function () { throw e }, 0)
             }
-            locked = false
         }
+
+        locked = false
     }
 
-    function unregister(vnode) {
-        var index = vnodes.indexOf(vnode)
-        if (index >= 0) vnodes.splice(index, 1)
-    }
+    // Separate these out into separate closures, so we can let unused functions
+    // be properly collected.
+    var methods = typeof Set === "function" && typeof Array.from === "function"
+        // Let's try a set first - they generally have a sublinear add/remove
+        // operation, and that's what we do most.
+        ? (function () {
+            var vnodes = new Set()
 
-    exports.SelfSufficient = SelfSufficient
+            return {
+                invokeRedraw: function () {
+                    var prev = new Set(vnodes)
+                    vnodes.clear()
+                    invokeList(prev.values())
+                },
+
+                unregister: function (vnode) {
+                    vnodes.delete(vnode)
+                },
+
+                register: function (vnode) {
+                    vnodes.add(vnode)
+                },
+
+                isEmpty: function () {
+                    return vnodes.size === 0
+                },
+            }
+        })()
+        : (function () {
+            var count = 0
+            var offset = 0
+            var vnodes = []
+
+            /** @this */
+            function iterNext() {
+                var done = this._ === offset
+                var value = done ? undefined : vnodes[this._++]
+
+                return {done: done, value: value}
+            }
+
+            return {
+                invokeRedraw: function () {
+                    offset = count
+                    invokeList({_: 0, next: iterNext})
+                    var i = 0
+
+                    while (i !== offset) vnodes[i++] = vnodes[offset++]
+                    count -= offset
+                    vnodes.length = count
+                    offset = 0
+                },
+
+                // This removes the first occurrence. It avoids all the ceremony
+                // of `indexOf` + `splice`, as well as the latter's resulting
+                // allocation.
+                //
+                // Note: this is called on every redraw, so it *has* to be fast.
+                unregister: function (vnode) {
+                    for (var i = offset; i < count; i++) {
+                        if (vnodes[i] === vnode) {
+                            var j = i++
+                            while (i !== count) vnodes[j++] = vnodes[i++]
+                            vnodes[count--] = undefined
+                        }
+                    }
+                },
+
+                register: function (vnode) {
+                    for (var i = offset; i < count; i++) {
+                        if (vnodes[i] === vnode) return
+                    }
+
+                    vnodes[count++] = vnode
+                },
+
+                isEmpty: function () {
+                    return offset === count
+                },
+            }
+        })()
+
     function SelfSufficient(tag, attrs) {
         if (typeof tag !== "string") tag = "div"
         if (typeof attrs !== "object" || attrs == null) attrs = undefined
@@ -80,18 +156,17 @@
 
     SelfSufficient.prototype.onbeforeupdate = function (vnode, old) {
         // This is false only if we're currently redrawing.
-        if (vnode !== old && vnodes != null) unregister(old)
+        if (vnode !== old) methods.unregister(old)
         return true
     }
 
     SelfSufficient.prototype.forceRedraw = function (vnode) {
         if (locked) throw new Error("Node is currently locked!")
-        if (vnodes != null) {
-            unregister(vnode)
-        } else {
-            vnodes = []
+        if (methods.isEmpty()) {
             // 60fps translates to ~16ms per frame
-            schedule(invokeRedraw, 16 - Date.now() - last)
+            schedule(methods.invokeRedraw, 16 - Date.now() - last)
+        } else {
+            methods.unregister(vnode)
         }
         locked = true
         try {
@@ -101,13 +176,19 @@
         }
     }
 
+    SelfSufficient.prototype.safe = function () {
+        return !locked
+    }
+
+    // Alias so you can overwrite `redraw` with a compatible function and still
+    // redraw from outside the instance.
+    SelfSufficient.prototype._redraw =
     SelfSufficient.prototype.redraw = function (vnode) {
-        if (vnodes == null) {
-            vnodes = []
-            // 60fps translates to ~16ms per frame
-            schedule(invokeRedraw, 16 - Date.now() - last)
+        // 60fps translates to ~16ms per frame
+        if (methods.isEmpty()) {
+            schedule(methods.invokeRedraw, 16 - Date.now() - last)
         }
-        if (vnodes.indexOf(vnode) < 0) vnodes.push(vnode)
+        methods.register(vnode)
     }
 
     SelfSufficient.prototype.link = function (vnode, callback) {
@@ -121,4 +202,6 @@
             }
         }
     }
+
+    return SelfSufficient
 })

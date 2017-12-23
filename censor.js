@@ -6,8 +6,8 @@
 ;(function () {
     "use strict"
 
-    if (typeof exports === "object" && exports) {
-        exports.censor = censor
+    if (typeof module === "object" && module && module.exports) {
+        module.exports = censor
     } else if (typeof m !== "function") {
         throw new Error("Mithril must be loaded first!")
     } else {

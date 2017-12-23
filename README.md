@@ -23,9 +23,12 @@ Everything is exposed as submodules, where you can pull them all in piecemeal. T
 
 If you wish to bundle these, you can just concatenate the ones you use or use Browserify/etc. to bundle them along with your app.
 
+If you're using Rollup (with `rollup-plugin-commonjs`) or Webpack, these are all default-exported via `module.exports`, so you should be importing them as default imports.
+
 - [`mithril-helpers/censor` - `censor(attrs)`](#mithril-helperscensor)
 - [`mithril-helpers/store` - `makeStore(initial?, onchange?)`](#mithril-helpersstore)
 - [`mithril-helpers/self-sufficient` - `new SelfSufficient(tag?, attrs?)`](#mithril-helpersself-sufficient)
+- [`mithril-helpers/redraw` - `makeRedraw(state?)`](#mithril-helpersredraw)
 - [`mithril-helpers/migrate/v1` - Mithril v0.2 &rarr; v1 migration](#mithril-helpersmigratev1)
 
 ### mithril-helpers/censor
@@ -59,7 +62,7 @@ Exposes a `SelfSufficient` class, for making self-sufficient (i.e. no dependency
 
 - `state.forceRedraw(vnode)` - Force a synchronous redraw for this vnode.
 
-- `state.redraw(vnode)` - Schedule a redraw for this vnode.
+- `state.redraw(vnode)` (Alias: `state._redraw(vnode)`) - Schedule a redraw for this vnode.
 
 - `state.link(vnode, handler)` - Wrap an event handler to implicitly redraw iff `e.redraw !== false`, much like how Mithril normally does implicitly when you use `m.mount`.
 
@@ -128,6 +131,202 @@ class Comp extends m.helpers.SelfSufficient {
                     onclick: this.link(() => { this.clicked = true }),
                 }, "Just kidding, nothing to see here..."),
         ]
+    }
+}
+```
+
+### mithril-helpers/redraw
+
+A utility to prevent unnecessary redraws and avoid buggy behavior when linking streams/stores to `m.redraw`.
+
+- `redraw = makeRedraw()` - Make an async redraw wrapper around the global redraw system.
+
+- `redraw = makeRedraw(state)` - Make an async redraw wrapper around a `SelfSufficient` instance.
+
+- `redraw()`/`redraw(vnode)` - Invoke the redraw wrapper, for global/`SelfSufficient` wrappers, respectively.
+
+- `redraw.ready()` - Open the redraw wrapper, so it may start scheduling redraws.
+
+Now, you're probably wondering *what* buggy behavior I'm referring to. Consider this example, which would result in a nasty surprise:
+
+```js
+const Comp = {
+    oninit({state}) {
+        // ...
+        state.foo.map(m.redraw)
+    },
+
+    oncreate({dom, state}) {
+        state.plugin = $(dom).somePlugin()
+        state.plugin.setFoo("initial")
+    },
+
+    onupdate({dom, state}) {
+        state.plugin.setFoo(state.foo() ? "foo" : "bar")
+    },
+
+    view({attrs, state}) {
+        // ...
+    }
+}
+```
+
+If `state.foo` is a stream that already has a value, you've just called `m.redraw` *inside* `oninit`. In v1, this will likely *not* do what you want, instead most likely causing `onupdate` to be called *inside* `oninit`. This would look like a Mithril problem, except it's because when you called `m.redraw`, it just rendered the same tree recursively. Here's what it's really doing:
+
+- Render `m(Comp)`:
+    - Call `oninit`:
+        - Render `m(Comp)`:
+            - Try to update existing children
+            - No children found
+            - Error!
+
+Moving the `state.foo.map(m.redraw)` to `oncreate` could fix it, but we can't simply move it to the beginning, either:
+
+```js
+const Comp = {
+    oninit({state}) {
+        // ...
+    },
+
+    oncreate({dom, state}) {
+        state.foo.map(m.redraw)
+
+        state.plugin = $(dom).somePlugin()
+        state.plugin.setFoo("initial")
+    },
+
+    onupdate({dom, state}) {
+        state.plugin.setFoo(state.foo() ? "foo" : "bar")
+    },
+
+    view({attrs, state}) {
+        // ...
+    }
+}
+```
+
+Now, it at least looks like it might work, except:
+
+- Render `m(Comp)`:
+    - Call `oninit`
+    - Render children
+    - Call `oncreate`:
+        - Render `m(Comp)`:
+            - Update children
+            - Call `onupdate`
+            - `state.plugin` is `undefined`, so you can't call `state.plugin.setFoo`
+            - Error!
+
+Moving the `state.foo.map(m.redraw)` to the bottom of `oncreate` could fix it mostly, but it's a very ugly hack, and only works for one stream/property (and it doesn't work with stores from here, either).
+
+```js
+const Comp = {
+    oninit({state}) {
+        // ...
+    },
+
+    oncreate({dom, state}) {
+        state.plugin = $(dom).somePlugin()
+        state.plugin.setFoo("initial")
+
+        state.foo.map(m.redraw)
+    },
+
+    onupdate({dom, state}) {
+        state.plugin.setFoo(state.foo() ? "foo" : "bar")
+    },
+
+    view({attrs, state}) {
+        // ...
+    }
+}
+```
+
+Alternatively, you could use `Promise.resolve` or `setTimeout`, but those are just as ugly and hackish.
+
+```js
+const Comp = {
+    oninit({state}) {
+        // ...
+    },
+
+    oncreate({dom, state}) {
+        state.foo.map(() => { Promise.resolve().then(m.redraw) })
+
+        state.plugin = $(dom).somePlugin()
+        state.plugin.setFoo("initial")
+    },
+
+    onupdate({dom, state}) {
+        state.plugin.setFoo(state.foo() ? "foo" : "bar")
+    },
+
+    view({attrs, state}) {
+        // ...
+    }
+}
+```
+
+Here's what this utility lets you do:
+
+```js
+const Comp = {
+    oninit({state}) {
+        // ...
+        state.redraw = m.helpers.makeRedraw()
+
+        // Right where it belongs, and nothing is scheduled until `oncreate` is
+        // called
+        state.foo.map(state.redraw)
+    },
+
+    oncreate({dom, state}) {
+        // And now everything is scheduled asynchronously
+        state.redraw.ready()
+
+        state.plugin = $(dom).somePlugin()
+        state.plugin.setFoo("initial")
+    },
+
+    onupdate({dom, state}) {
+        state.plugin.setFoo(state.foo() ? "foo" : "bar")
+    },
+
+    view({attrs, state}) {
+        // ...
+    }
+}
+```
+
+It also optionally takes a `state` parameter (a `SelfSufficient` instance works best, but anything with a `_redraw` method accepting a vnode will do), which in that case, the returned function accepts a `vnode` parameter and forwards it to `state._redraw`. (It's ignored otherwise)
+
+```js
+const Comp = {
+    __proto__: new m.helpers.SelfSufficient(),
+
+    oninit({state}) {
+        // ...
+        state.redraw = m.helpers.makeRedraw(this)
+
+        // Right where it belongs, and nothing is scheduled until `oncreate` is
+        // called
+        state.foo.map(state.redraw)
+    },
+
+    oncreate({dom, state}) {
+        // And now everything is scheduled asynchronously
+        state.redraw.ready()
+
+        state.plugin = $(dom).somePlugin()
+        state.plugin.setFoo("initial")
+    },
+
+    onupdate({dom, state}) {
+        state.plugin.setFoo(state.foo() ? "foo" : "bar")
+    },
+
+    view({attrs, state}) {
+        // ...
     }
 }
 ```

@@ -14,8 +14,8 @@
 	var hasOwn = {}.hasOwnProperty
 	var mithril
 
-    if (typeof exports === "object" && exports) {
-        exports.v1 = v1
+    if (typeof module === "object" && module && module.exports) {
+        module.exports = v1
 		mithril = require("mithril")
     } else if (typeof m !== "function") {
         throw new Error("Mithril must be loaded first!")

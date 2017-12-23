@@ -26,13 +26,14 @@ export interface Renderable<Attrs, State extends Renderable<Attrs, State>>
 /**
  * Create a self-sufficient component. The tag and attributes are optional.
  */
-export class SelfSufficient<Attrs, State extends Renderable<Attrs, State>> {
+export default class SelfSufficient<Attrs, State extends Renderable<Attrs, State>> {
     constructor(tag?: string, attrs?: Mithril.Attributes);
 
     /**
      * Request a redraw for this vnode. This is always asynchronous.
      */
     readonly redraw: (vnode: Mithril.Vnode<Attrs, State>) => void;
+    readonly _redraw: (vnode: Mithril.Vnode<Attrs, State>) => void;
 
     /**
      * Force an immediate redraw for this vnode. This is always synchronous, and
