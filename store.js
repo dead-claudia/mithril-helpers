@@ -18,13 +18,14 @@
     }
 
     // So engines don't think to "optimize" the memory layout by making a shared
-    // closure for both functions.
+    // closure for both objects.
     //
     // Note: this uses `onchange` itself as the lock, so it doesn't require an
     // extra variable.
     function makeObserved(store, onchange) {
-        return function (value) {
-            if (arguments.length) {
+        return {
+            get: function () { return store },
+            set: function (value) {
                 if (onchange) {
                     var old = store
                     var func = onchange
@@ -34,9 +35,9 @@
                 } else {
                     store = value
                 }
-            }
 
-            return store
+                return value
+            },
         }
     }
 
@@ -44,9 +45,9 @@
         if (typeof onchange === "function") {
             return makeObserved(store, onchange)
         } else {
-            return function (value) {
-                if (arguments.length) store = value
-                return store
+            return {
+                get: function () { return store },
+                set: function (value) { return store = value },
             }
         }
     }

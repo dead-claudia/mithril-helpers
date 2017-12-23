@@ -2,6 +2,7 @@
   "name": "mithril-helpers",
   "version": "0.0.0",
   "main": "index.js",
+  "module": "index.mjs",
   "license": "(ISC OR MIT)",
   "peerDependencies": {
     "@types/mithril": "1",

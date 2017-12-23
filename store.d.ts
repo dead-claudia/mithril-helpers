@@ -2,8 +2,8 @@
  * A getter/setter store.
  */
 export interface Store<T> {
-    (): T;
-    <U extends T>(newValue: U): U;
+    get(): T;
+    set<U extends T>(newValue: U): U;
 }
 
 /**

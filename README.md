@@ -23,11 +23,11 @@ Also, make sure that if you want to add a helper, your helpers do one thing and 
 
 ## API
 
-Everything is exposed as submodules, where you can pull them all in piecemeal. They are available as both CommonJS modules (exported by name) and global scripts that attach themselves individually to `m.helpers`, where `m` is Mithril's main export. In addition, `index.js` is a CommonJS-only module bundling all of them except for what's in `/migrate`.
+Everything is exposed as submodules, where you can pull them all in piecemeal. They are available as both CommonJS modules (exported by name) and global scripts that attach themselves individually to `m.helpers`, where `m` is Mithril's main export. In addition, `/index.js` is a CommonJS-only module bundling all of them except for what's in `/migrate`.
+
+Alternatively, if you're using ES modules, every module apart from what's in `/migrate` is also available as an ES module with the extension `.mjs`, with `/index.mjs` exposing named exports and the rest as default exports. Do note that some of them require Mithril, and so you will need something like `rollup-plugin-commonjs` + `rollup-plugin-node-resolve` or Webpack's builtin resolver to resolve Mithril.
 
 If you wish to bundle these, you can just concatenate the ones you use or use Browserify/etc. to bundle them along with your app.
-
-If you're using Rollup (with `rollup-plugin-commonjs`) or Webpack, these are all default-exported via `module.exports`, so you should be importing them as default imports.
 
 - [`mithril-helpers/censor` - `censor(attrs)`](#mithril-helperscensor)
 - [`mithril-helpers/store` - `makeStore(initial?, onchange?)`](#mithril-helpersstore)
@@ -45,10 +45,10 @@ return m("div", m.helpers.censor(vnode.attrs), [...children])
 
 ### mithril-helpers/store
 
-Exposes `store = makeStore(initial?, onchange?)`, which is very much like a spiritial successor to Mithril v0.2's `m.prop()`, just without all the magic promise wrapping stuff.
+Exposes `store = makeStore(initial?, onchange?)`, which is very much like a spiritial successor to Mithril v0.2's `m.prop()`, just without all the magic promise wrapping stuff, and with a more useful API.
 
-- When you call `store()`, you get the value.
-- If you call it with an argument like with `store(newValue)`, it invokes `onchange(newValue, oldValue)` if it exists, for easy observation.
+- When you call `store.get()`, you get the value.
+- When you call `store.set(newValue)`, it invokes `onchange(newValue, oldValue)` if it exists, for easy observation.
 
 I also threw in a couple niceities to make it even better.
 
