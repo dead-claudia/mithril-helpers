@@ -77,7 +77,7 @@ Note that this requires a `Set` and `Array.from` polyfill to work.
 
 ## Usage
 
-- `m.helpers.selfSufficient(view: (state) -> vnode) -> vnode`
+- `m(m.helpers.selfSufficient, {view: (state) -> vnode})`
 
     - `view` is the function used to generate the tree. It must return a DOM vnode.
 
