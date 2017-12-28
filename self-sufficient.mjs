@@ -86,7 +86,7 @@ class State {
     }
 }
 
-export const SelfSufficient = {
+export default const SelfSufficient = {
     onbeforeupdate(vnode, old) {
         // This is false only if we're currently redrawing.
         if (vnode !== old) vnodes.delete(old)

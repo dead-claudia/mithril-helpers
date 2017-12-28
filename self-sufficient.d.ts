@@ -12,22 +12,25 @@ export interface MithrilEvent extends Event {
     redraw?: boolean;
 }
 
-export interface SelfSufficientParams extends Mithril.Lifecycle<SelfSufficientParams, SelfSufficientState> {
+export interface SelfSufficientParams {
     tag?: string;
     attrs?: Mithril.Attributes,
-    view(vnode: Mithril.Vnode<this, SelfSufficientState>): Mithril.Vnode<this, SelfSufficientState>;
+    view<R extends Mithril.Vnode<any, any>>(state: SelfSufficientState): R;
 }
 
 /**
  * The core component.
  */
-export interface SelfSufficientState extends Mithril.Lifecycle<SelfSufficientParams, SelfSufficientState> {
+export interface SelfSufficientState {
     safe(): boolean;
     redraw(): void;
     redrawSync(): void;
-    link<E extends MithrilEvent>(
-        handler: ((event: E) => any) | {handleEvent(event: E): any}
+    link<E>(
+        handler: ((event: E & MithrilEvent) => any) |
+            {handleEvent(event: E & MithrilEvent): any}
     ): (event: E) => void;
 }
 
-export default const SelfSufficient: Mithril.ComponentTypes<SelfSufficientParams, SelfSufficientState>;
+declare const SelfSufficient: Mithril.ComponentTypes<SelfSufficientParams, any>
+
+export default SelfSufficient;
