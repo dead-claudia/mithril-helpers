@@ -16,8 +16,6 @@ Exposes a `SelfSufficient` component, for making self-sufficient (i.e. no depend
 
 - `state.link(handler)` - Wrap an event handler to implicitly redraw iff `e.redraw !== false`, much like how Mithril normally does implicitly when you use `m.mount`.
 
-When you call `state.redraw(vnode)`, when it redraws, it also defines a few of Mithril's lifecycle methods (and will wrap existing handlers if necessary).
-
 Here's a few examples of how it's used:
 
 ```js
