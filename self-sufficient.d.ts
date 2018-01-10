@@ -13,9 +13,7 @@ export interface MithrilEvent extends Event {
 }
 
 export interface SelfSufficientParams {
-    tag?: string;
-    attrs?: Mithril.Attributes,
-    view<R extends Mithril.Vnode<any, any>>(state: SelfSufficientState): R;
+    view(state: SelfSufficientState): Mithril.Vnode<any, any>;
 }
 
 /**

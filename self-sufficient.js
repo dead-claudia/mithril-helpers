@@ -11,31 +11,35 @@
 
     if (typeof module === "object" && module && module.exports) {
         module.exports = factory(
-            require("mithril/hyperscript"),
-            require("mithril/render")
+            require("mithril/render"),
+            require("mithril/render/vnode")
         )
     } else if (typeof m === "function") {
-        (m.helpers || (m.helpers = {})).SelfSufficient = factory(m, m.render)
+        (m.helpers || (m.helpers = {})).SelfSufficient = factory(
+            m.render, m.vnode
+        )
     } else {
         throw new Error("Mithril must be loaded first!")
     }
-})(function (h, render) {
+})(function (render, Vnode) {
     "use strict"
 
     // Get the correct scheduling function
-    var schedule = typeof requestAnimationFrame === "function"
+    var timeout = typeof requestAnimationFrame === "function"
         ? requestAnimationFrame
         : setTimeout
 
     // Set up the initial state
     var last = 0
     var locked = false
-    var vnodes = new Map()
+    var vnodes = []
+    var states = []
 
     function invokeRedraw() {
-        var prev = Array.from(vnodes)
+        var prev = states
 
-        vnodes.clear()
+        vnodes = []
+        states = []
         last = Date.now()
         locked = true
 
@@ -43,9 +47,7 @@
             // We need at least some fault tolerance - it'd be weird if someone
             // else's errors prevented one of our redraws.
             try {
-                render(prev[i][0].dom,
-                    (0, prev[i][0].attrs.view)(prev[i][1])
-                )
+                invokeRender(prev[i])
             } catch (e) {
                 setTimeout(function () { throw e }, 0)
             }
@@ -54,7 +56,96 @@
         locked = false
     }
 
-    function State(vnode) {
+    function schedule(state) {
+        // 60fps translates to ~16ms per frame
+        if (!vnodes.length) timeout(invokeRedraw, 16 - Date.now() - last)
+        var index = vnodes.indexOf(state._)
+
+        if (index >= 0) {
+            // In case this winds up spammy, I can't take the naïve approach.
+            for (var end = vnodes.length - 1; index < end; index++) {
+                vnodes[index] = vnodes[index + 1]
+                states[index] = states[index + 1]
+            }
+            vnodes[end] = state._
+            states[end] = state
+        } else {
+            vnodes.push(state._)
+            states.push(state)
+        }
+    }
+
+    function remove(vnode) {
+        var index = vnodes.indexOf(vnode)
+
+        if (index >= 0) {
+            vnodes.splice(index, 0)
+            states.splice(index, 0)
+        }
+    }
+
+    function callHook(vnode) {
+		var original = vnode.state
+		try {
+			return this.apply(original, arguments)
+		} finally {
+            if (vnode.state !== original) {
+                throw new Error("`vnode.state` must not be modified")
+            }
+		}
+	}
+
+    function callView(vnode, state) {
+        var ret = Vnode.normalize((0, vnode.attrs.view)(state))
+
+        if (
+            ret == null || typeof ret !== "object" ||
+            typeof ret.tag !== "string" || ret.tag === "#" ||
+            ret.tag === "<" || ret.tag === "["
+        ) {
+            throw new TypeError("You must return a DOM vnode!")
+        }
+
+        if (ret.key != null) {
+            throw new TypeError(
+                "You should set the key on the SelfSufficient component, not " +
+                "the instance's view."
+            )
+        }
+
+        return ret
+    }
+
+    function invokeRender(state) {
+        var child = callView(state._, state)
+
+        // We have to make sure Mithril sees the correct vnode state.
+        child.state = state._.instance.state
+        child.events = state._.instance.events
+        child.dom = state._.instance.dom
+        child.domSize = state._.instance.domSize
+
+        // We have to make sure Mithril sees the correct vnode to diff
+        state._.instance = child
+
+        if (child.attrs != null &&
+                typeof child.attrs.onbeforeupdate === "function") {
+            var forceUpdate = callHook.call(
+                child.attrs.onbeforeupdate,
+                child, child
+            )
+
+            if (forceUpdate !== undefined && !forceUpdate) return
+        }
+
+        render(child.dom, child.children)
+
+        if (typeof child.attrs.onupdate === "function") {
+            callHook.call(child.attrs.onupdate, child)
+        }
+    }
+
+	function State(vnode) {
         this._ = vnode
     }
 
@@ -63,10 +154,7 @@
     }
 
     State.prototype.redraw = function () {
-        if (!this.safe()) return
-        // 60fps translates to ~16ms per frame
-        if (!vnodes.size) schedule(invokeRedraw, 16 - Date.now() - last)
-        vnodes.set(this._, this)
+        if (this.safe()) schedule(this)
     }
 
     State.prototype.redrawSync = function () {
@@ -75,11 +163,11 @@
             throw new TypeError("Can't redraw without a DOM node!")
         }
         // 60fps translates to ~16ms per frame
-        if (!vnodes.size) schedule(invokeRedraw, 16 - Date.now() - last)
-        else vnodes.delete(this._)
+        if (!vnodes.length) timeout(invokeRedraw, 16 - Date.now() - last)
+        else remove(this._)
         locked = true
         try {
-            render(this._.dom, (0, this._.attrs.view)(this))
+            invokeRender(this._, this)
         } finally {
             locked = false
         }
@@ -94,39 +182,26 @@
 
             if (e.redraw !== false) {
                 e.redraw = false
-                // 60fps translates to ~16ms per frame
-                if (!vnodes.size) schedule(invokeRedraw, 16 - Date.now() - last)
-                vnodes.set(self._, self)
+                schedule(self)
             }
         }
     }
 
+    function unlock(vnode) {
+        // So Mithril believes this has already been rendered to.
+        vnode.dom.vnodes = vnode.children
+        locked = false
+    }
+
     return {
-        onbeforeupdate: function (vnode, old) {
-            // This is false only if we're currently redrawing.
-            if (vnode !== old) vnodes.delete(old)
-        },
-
-        onupdate: function () {
-            locked = false
-        },
-
-        onremove: function (vnode) {
-            vnodes.delete(vnode)
-        },
+        oncreate: unlock,
+        onupdate: unlock,
+        onremove: remove,
 
         view: function (vnode) {
-            var ret = view(new State(vnode))
-
-            if (
-                object == null || typeof object !== "object" ||
-                typeof ret.tag !== "string" || ret.tag === "#" ||
-                ret.tag === "<" || ret.tag === "["
-            ) {
-                throw new TypeError("You must return a DOM vnode!")
-            }
-
-            return ret
+            locked = true
+            remove(vnode)
+            return callView(vnode, new State(vnode))
         }
     }
 })

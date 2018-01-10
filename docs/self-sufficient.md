@@ -6,6 +6,7 @@ Exposes a `SelfSufficient` component, for making self-sufficient (i.e. no depend
 
 - `m(m.helpers.SelfSufficient, {view: (state) -> vnode})` - Create a new instance to do subtree management.
     - `view` is what you want your subtree to look like. It's a function called on each redraw. Note that you *must* return an actual DOM node.
+    - All the lifecycle methods work just as they normally would and just as you would expect. In particular, `onbeforeupdate` and `onupdate` are called on internal redraws as well as external ones.
     - The returned vnode is what's used to redraw with, and is what's ultimately returned.
 
 - `state.safe()` - Whether it's safe to invoke `redrawSync`.
@@ -71,13 +72,14 @@ class Comp {
 }
 ```
 
-Note that this requires a `Set` and `Array.from` polyfill to work.
-
 ## Usage
 
 - `m(m.helpers.selfSufficient, {view: (state) -> vnode})`
 
-    - `view` is the function used to generate the tree. It must return a DOM vnode.
+    - `view` is the function used to generate the tree. It must return a DOM vnode, it must return the *same* DOM node type, and it *must not* include a `key`. (If you violate these invariants, it will know, and it will complain very loudly at you and mock you endlessly for it. :wink:)
+        - If you need to use a different DOM node, you'll need to return a `SelfSufficient` vnode with a different `key` on the `SelfSufficient` component.
+        - If you need to use a `key`, put it on the `SelfSufficient` vnode, not the `view`'s result.
+    - Throws on render and redraw if any invariant is not upheld.
 
 - `state.safe() -> boolean`
 
