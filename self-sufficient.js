@@ -85,15 +85,15 @@
     }
 
     function callHook(vnode) {
-		var original = vnode.state
-		try {
-			return this.apply(original, arguments)
-		} finally {
+        var original = vnode.state
+        try {
+            return this.apply(original, arguments)
+        } finally {
             if (vnode.state !== original) {
                 throw new Error("`vnode.state` must not be modified")
             }
-		}
-	}
+        }
+    }
 
     function callView(vnode, state) {
         var ret = Vnode.normalize((0, vnode.attrs.view)(state))
@@ -145,7 +145,7 @@
         }
     }
 
-	function State(vnode) {
+    function State(vnode) {
         this._ = vnode
     }
 

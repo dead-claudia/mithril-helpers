@@ -11,19 +11,19 @@
 ;(function () {
     "use strict"
 
-	// Ideally, this would use a hook to know when Mithril starts/finishes
+    // Ideally, this would use a hook to know when Mithril starts/finishes
     // redrawing.
     var p = Promise.resolve()
     var mithril
 
     if (typeof module === "object" && module && module.exports) {
         module.exports = makeRedraw
-		mithril = require("mithril")
+        mithril = require("mithril")
     } else if (typeof m !== "function") {
         throw new Error("Mithril must be loaded first!")
     } else {
-		(m.helpers || (m.helpers = {})).makeRedraw = makeRedraw
-		mithril = m
+        (m.helpers || (m.helpers = {})).makeRedraw = makeRedraw
+        mithril = m
     }
 
     function makeRedraw(state) {
