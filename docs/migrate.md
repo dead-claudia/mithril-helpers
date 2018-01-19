@@ -48,5 +48,5 @@ Here are a few critical notes you need to read before using this:
 
 - Unlike v0.2, you can no longer cache trees in v1; you must create them fresh each time now.
 - `m.migrate(Comp)` brands a component for migration, so this knows it should be migrated.
-    - You must do this for every legacy component *before* switching to this.
 - You *must* call `m.migrate(Comp)` on all v0.2 components to brand them before they can be migrated with this shim. Components created via `m()` and `m.component()` are automatically branded this way, but you have to add them to all custom components.
+    - Note that you could temporarily do `m.migrate = function (Comp) { return Comp }` before you switch to this library and rewire your `mithril` imports.
