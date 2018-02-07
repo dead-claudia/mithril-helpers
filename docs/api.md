@@ -12,6 +12,6 @@ If you wish to bundle these, you can just concatenate the ones you use or use Br
 
 - [`mithril-helpers/censor` - `censor(attrs)`](./censor.md)
 - [`mithril-helpers/store` - `makeStore(initial?, onchange?)`](./store.md)
-- [`mithril-helpers/self-sufficient` - `m(SelfSufficient, {tag?, attrs?, view})`](./self-sufficient.md)
+- [`mithril-helpers/self-sufficient` - `m(SelfSufficient, {view})`](./self-sufficient.md)
 - [`mithril-helpers/redraw` - `makeRedraw(state?)`](./redraw.md)
 - [`mithril-helpers/migrate` - Mithril migration utilities](./migrate.md)
