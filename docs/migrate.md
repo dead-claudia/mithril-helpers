@@ -20,9 +20,13 @@ The shim is exposed as `v1`, but throughout this listing, we use `m` to refer to
     - v1's magic methods are available for DOM vnodes *only*, not for component vnodes.
     - The `xlink` namespace is *not* shimmed for you - you must add it now.
     - Note: raw components are *not* allowed.
+    - Note: inner fragments are compiled to v1 fragments, not ignored.
 - `m(Component, ...)` and `m.component(Component, ...)` are shimmed using v1's `m`, including the arbitrary-argument API.
     - All the v1 lifecycle methods may *also* be used.
     - Node instances are also components as they previously were.
+    - The state is shimmed as `this = vnode.state = {ctrl}`
+- `{subtree: "retain"}` is *not* shimmed.
+    - Instead, you should implement `onbeforeupdate`, change your `view` to call that first (and return `{subtree: "retain"}` if it returns falsy), and then after migrating, remove the indirection.
 - `m.trust(text)` returns a String object (not primitive) as it did in v0.2, but it also has the relevant v1 vnode properties copied into it.
 - `m.prop(value?)` is fully shimmed with original semantics.
     - It is actually properly shimmed; it doesn't use v1's streams.
@@ -36,6 +40,7 @@ The shim is exposed as `v1`, but throughout this listing, we use `m` to refer to
     - For `options.unwrap{Success,Error}`, just use `extract`/`deserialize` appropriately instead.
 - `m.mount(elem, Comp)` and `m.route(elem, defaultRoute, routes)` are mostly shimmed.
     - Support for raw vnode roots is *not* shimmed.
+- `m.redraw.strategy` is *not* shimmed.
 - The rest of the `m.route` API is fully shimmed:
     - `m.route.mode` calls v1's `m.route.prefix(prefix)` on set.
     - `m.route()` returns v1's `m.route.get()`
@@ -47,6 +52,8 @@ The shim is exposed as `v1`, but throughout this listing, we use `m` to refer to
 Here are a few critical notes you need to read before using this:
 
 - Unlike v0.2, you can no longer cache trees in v1; you must create them fresh each time now.
+    - An easy way to sidestep this is by creating a function that returns a tree, and calling that in the view.
+    - If you were doing this for memory reasons, it's almost guaranteed to be a premature optimization, and it would've been pretty useless anyways. (Also, the fact selectors are cached now only makes this more so.)
 - `m.migrate(Comp)` brands a component for migration, so this knows it should be migrated.
 - You *must* call `m.migrate(Comp)` on all v0.2 components to brand them before they can be migrated with this shim. Components created via `m()` and `m.component()` are automatically branded this way, but you have to add them to all custom components.
-    - Note that you could temporarily do `m.migrate = function (Comp) { return Comp }` before you switch to this library and rewire your `mithril` imports.
+    - Note that you could (and should) temporarily do `m.migrate = function (Comp) { return Comp }` before you switch to this library and rewire your `mithril` imports.
