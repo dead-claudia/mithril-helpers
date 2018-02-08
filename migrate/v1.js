@@ -26,15 +26,17 @@
         mithril = m
     }
 
-    var migrated = typeof WeakSet === "function"
-        ? new WeakSet()
+    var index = 0
+    var migrated = typeof WeakMap === "function"
+        ? new WeakMap()
         : {
-            has: function (Comp) { return Comp.$migrating },
-            add: function (Comp) { Comp.$migrating = true }
+            has: function (Comp) { return Comp.$migrating != null },
+            get: function (Comp) { return Comp.$migrating },
+            set: function (Comp, value) { Comp.$migrating = value }
         }
 
     v1.migrate = function (Comp) {
-        migrated.add(Comp)
+        migrated.set(Comp, index++)
         return Comp
     }
 
@@ -98,59 +100,48 @@
     //  #    # ###  ####   ####  #    # #       ####  #    # ###### #    #   #
     //
 
-    var construct = typeof Reflect === "object"
-        ? Reflect.construct
-        : function construct(controller, _, args) {
-            if (!controller) return {}
-            var result = Object.create(controller.prototype)
-            return controller.apply(result, args) || result
-        }
-
-    function invokeHook(hook, ifMissing) {
-        return function () {
-            var func = this.component[hook]
-            return func != null ? func.apply(this, arguments) : ifMissing
-        }
+    function construct(controller, _, args) {
+        if (!controller) return {}
+        var result = Object.create(controller.prototype)
+        return controller.apply(result, args) || result
     }
 
     var RenderLegacy = {
         oninit: function (vnode) {
-            this.component = vnode.attrs.component
-            this.state = construct(this.component.controller, vnode.attrs.args)
-            if (this.component.oninit) {
-                this.component.oninit.apply(this.component, arguments)
-            }
+            var component = vnode.attrs.component
+            this.ctrl = construct(component.controller, vnode.attrs.args)
+            if (component.oninit) component.oninit(vnode)
         },
 
-        oncreate: function () {
-            var func = this.component.oncreate
-            if (func != null) func.apply(this, arguments)
+        oncreate: function (vnode) {
+            var func = vnode.attrs.component.oncreate
+            if (func != null) vnode.attrs.call(this, vnode)
         },
 
-        onbeforeupdate: function () {
-            var func = this.component.onbeforeupdate
-            return func != null ? func.apply(this, arguments) : true
+        onbeforeupdate: function (vnode, old) {
+            var func = vnode.attrs.component.onbeforeupdate
+            return func != null ? func.call(this, vnode, old) : true
         },
 
-        onupdate: function () {
-            var func = this.component.onupdate
-            if (func != null) func.apply(this, arguments)
+        onupdate: function (vnode) {
+            var func = vnode.attrs.component.onupdate
+            if (func != null) func.call(this, vnode)
         },
 
-        onbeforeremove: function () {
-            var func = this.component.onbeforeremove
-            return func != null ? func.apply(this, arguments) : undefined
+        onbeforeremove: function (vnode) {
+            var func = vnode.attrs.component.onbeforeremove
+            return func != null ? func.call(this, vnode) : undefined
         },
 
-        onremove: function () {
-            var func = this.component.onremove
-            if (func != null) func.apply(this, arguments)
+        onremove: function (vnode) {
+            var func = vnode.attrs.component.onremove
+            if (func != null) func.call(this, vnode)
         },
 
         view: function (vnode) {
-            return this.component.view.apply(
-                this.component,
-                [this.state].concat(vnode.attrs.args)
+            return vnode.attrs.component.view.apply(
+                vnode.attrs.component,
+                [this.ctrl].concat(vnode.attrs.args)
             )
         },
     }
@@ -159,24 +150,36 @@
         throw new Error("v1 nodes aren't components anymore!")
     }
 
+    function makeLegacy(component, args, key) {
+        // Avoid the overhead of going through the factory
+        return mithril.vnode(RenderLegacy, key, {
+            component: component,
+            args: args
+        }, undefined, undefined, undefined)
+    }
+
     v1.component = makeComponent
     function makeComponent(component) {
-        if (component.tag !== RenderLegacy && !migrating.has(component)) {
+        if (!migrating.has(component)) {
             var output = mithril.apply(undefined, arguments)
             output.controller = output.view = nonComponentInit
             return output
         }
 
+        // So we can keep components properly diffed
+        var key = "mithril-helpers/self-sufficient:" + migrating.get(component)
         var args = []
 
         for (var i = 1; i < arguments.length; i++) {
             args[i] = arguments[i]
         }
 
-        var attrs = {component: component, args: args}
-        var output = mithril(RenderLegacy, attrs)
+        // Append to the key, so things like `m(Foo, {key: 1})` and
+        // `m(Bar, {key: 1})` are seen as different.
+        if (args[0] && args[0].key != null) key += ":" + args[0].key
+        // Avoid the overhead of going through the factory
+        var output = makeLegacy(component, args, key)
 
-        if (args[0] && args[0].key != null) output.attrs.key = args[0].key
         output.controller = function () {
             return construct(component.controller, args)
         }
@@ -233,16 +236,10 @@
         },
     }
 
-    function convertComponents(vnode) {
-        if (vnode.children == null) return
-        for (var i = 0; i < vnode.children.length; i++) {
-            if (migrating.has(vnode.children[i])) {
-                vnode.children[i] = mithril(RenderLegacy, {
-                    component: component,
-                    args: [],
-                })
-            }
-        }
+    function checkComponent(component) {
+      if (component.tag && !migrating.has(component)) {
+          throw new Error("Raw vnodes are no longer valid components in v1!")
+      }
     }
 
     function v1(tag, pairs) {
@@ -260,7 +257,12 @@
             }
         }
 
-        convertComponents(vnode)
+        if (Array.isArray(vnode.children)) {
+            for (var i = 0; i < vnode.children.length; i++) {
+                if (vnode.children[i]) checkComponent(vnode.children[i])
+            }
+        }
+
         return vnode
     }
 
@@ -305,9 +307,7 @@
     //
 
     v1.redraw = function (sync) {
-        if (sync === true) {
-            throw new Error("Sync redraws are not possible in v1!")
-        }
+        if (sync) throw new Error("Sync redraws are not possible in v1!")
         mithril.redraw()
     }
 
@@ -321,12 +321,7 @@
     //
 
     v1.mount = function (elem, component) {
-        if (component && component.tag && !migrating.has(component)) {
-            throw new Error(
-                "Raw vnodes are no longer valid mount components in v1!"
-            )
-        }
-
+        if (component != null) checkComponent(component)
         return mithril.mount.apply(this, arguments)
     }
 
@@ -340,17 +335,12 @@
     //
 
     function Resolver(component) {
-        if (component.tag && !migrating.has(component)) {
-            throw new Error(
-                "Raw vnodes are no longer valid mount components in v1!"
-            )
-        }
-
+        checkComponent(component)
         this.component = component
     }
 
     Resolver.prototype.render = function () {
-        return mithril(RenderLegacy, {component: this.component, args: []})
+        return makeLegacy(this.component, [])
     }
 
     v1.route = function (elem, arg1, arg2, vdom) {
@@ -482,9 +472,7 @@
     //
 
     v1.render = function (elem, vnode, forceRecreation) {
-        if (migrating.has(vnode)) {
-            vnode = mithril(RenderLegacy, {component: vnode, args: []})
-        }
+        if (migrating.has(vnode)) vnode = makeLegacy(vnode, [])
         if (forceRecreation) mithril.render(elem, null)
         return mithril.render(elem, vnode)
     }
