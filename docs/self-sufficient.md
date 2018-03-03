@@ -5,7 +5,7 @@
 Exposes a `SelfSufficient` component, for making self-sufficient (i.e. no dependency on `m.redraw`) object/closure and class components, respectively. It's also useful if you're using `m.render` directly, since you don't have to worry about implementing batching and all the other annoying crap.
 
 - `m(m.helpers.SelfSufficient, {view: (state) -> vnode})` - Create a new instance to do subtree management.
-    - `view` is what you want your subtree to look like. It's a function called on each redraw. Note that you *must* return an actual DOM node.
+    - `view` is what you want your subtree to look like. It's a function called on each redraw. Note that you *must* return a static DOM node, not a fragment or DOM node that might change.
     - All the lifecycle methods work just as they normally would and just as you would expect. In particular, `onbeforeupdate` and `onupdate` are called on internal redraws as well as external ones.
     - The returned vnode is what's used to redraw with, and is what's ultimately returned.
 
