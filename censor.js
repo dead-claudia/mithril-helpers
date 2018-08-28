@@ -24,7 +24,7 @@
     function includesOwn(attrs, keys) {
         if (Array.isArray(keys)) {
             for (var i = 0; i < keys.length; i++) {
-                if (hasOwn.call(attrs[i], keys[i])) return true
+                if (hasOwn.call(attrs, keys[i])) return true
             }
         }
         return false
