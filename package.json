@@ -4,8 +4,14 @@
   "main": "index.js",
   "module": "index.mjs",
   "license": "(ISC OR MIT)",
+  "scripts": {
+    "test": "ospec tests/"
+  },
   "peerDependencies": {
     "@types/mithril": "1",
     "mithril": "1"
+  },
+  "devDependencies": {
+    "mithril": "^1.1.6"
   }
 }
