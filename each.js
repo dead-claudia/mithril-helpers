@@ -13,12 +13,12 @@
     var Vnode
 
     function each(list, by, child) {
-        const children = []
-        const found = Object.create(null)
+        var children = []
+        var found = Object.create(null)
 
         for (let i = 0; i < list.length; i++) {
-            const item = list[i]
-            let key = by(item, i)
+            var item = list[i]
+            var key = by(item, i)
             if (typeof key !== "symbol") key = "" + key
             if (key in found) throw new Error("Duplicate keys are not allowed.")
             found[key] = true
