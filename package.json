@@ -5,7 +5,7 @@
   "module": "index.mjs",
   "license": "(ISC OR MIT)",
   "peerDependencies": {
-    "@types/mithril": "1",
-    "mithril": "1"
+    "@types/mithril": "2",
+    "mithril": "2"
   }
 }
