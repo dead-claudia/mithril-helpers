@@ -14,7 +14,7 @@
     } else if (typeof m !== "function") {
         throw new Error("Mithril must be loaded first!")
     } else {
-        (m.helpers || (m.helpers = {})).makeStore = makeStore
+        (m.helpers || (m.helpers = {})).store = makeStore
     }
 
     // So engines don't think to "optimize" the memory layout by making a shared
@@ -23,31 +23,33 @@
     // Note: this uses `onchange` itself as the lock, so it doesn't require an
     // extra variable.
     function makeObserved(store, onchange) {
-        return {
-            get: function () { return store },
-            set: function (value) {
-                if (onchange) {
-                    var old = store
-                    var func = onchange
-                    onchange = null
-                    func(store = value, old)
-                    onchange = func
-                } else {
-                    store = value
-                }
+        return function () {
+            if (!arguments.length) return store
+            var old = store
+            var func = onchange
+            var value = (store = arguments[0])
 
-                return value
-            },
+            if (func) {
+                onchange = null
+                try {
+                    func(value, old)
+                } finally {
+                    onchange = func
+                }
+            }
+
+            return value
         }
     }
 
     function makeStore(store, onchange) {
         if (typeof onchange === "function") {
-            return makeObserved(store, onchange)
+            // Attribute used here for whenever Terser finally implements this
+            // https://github.com/terser/terser/issues/350
+            return /*@__NOINLINE__*/ makeObserved(store, onchange)
         } else {
-            return {
-                get: function () { return store },
-                set: function (value) { return store = value },
+            return function () {
+                return arguments.length ? (store = arguments[0]) : store
             }
         }
     }
