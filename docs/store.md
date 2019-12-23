@@ -4,8 +4,8 @@
 
 Exposes `store = makeStore(initial?, onchange?)`, which is very much like a spiritial successor to Mithril v0.2's `m.prop()`, just without all the magic promise wrapping stuff, and with a more useful API.
 
-- When you call `store.get()`, you get the value.
-- When you call `store.set(newValue)`, it invokes `onchange(newValue, oldValue)` if it exists, for easy observation.
+- When you call `store()`, you get the value.
+- When you call `store(newValue)`, it invokes `onchange(newValue, oldValue)` if it exists, for easy observation.
 
 I also threw in a couple niceities to make it even better.
 
@@ -19,16 +19,16 @@ function TextBox() {
 
     return {
         view: ({attrs}) => m("input", {
-            value: title.get(),
-            onchange: m.withAttr("value", title.set),
+            value: title(),
+            onchange: e => title(e.target.value),
             onkeydown: function (e) {
                 if (e.keyCode === 13) {
-                    e.preventDefault()
-                    attrs.onsubmit(title.get())
+                    attrs.onsubmit(title())
+                    return false
                 } else if (e.keyCode === 27) {
-                    e.preventDefault()
-                    title.set("")
+                    title("")
                     attrs.oncancel()
+                    return false
                 }
             },
         }),
@@ -38,17 +38,17 @@ function TextBox() {
 
 ## Usage
 
-- `m.helpers.store(initial?, onchange?: (old, new) => any) -> store`
+- `m.helpers.store(initial?, onchange?) -> store`
 
     - Accepts an optional initial value, defaulting to `undefined`.
-    - Accepts an optional change listener, defaulting to a no-op.
+    - Accepts an optional `(old, new) -> any` change listener, defaulting to a no-op.
     - Returns a new store.
 
-- `store.get() -> value`
+- `store() -> value`
 
     - Returns the currently stored value.
 
-- `store.set(newValue) -> newValue`
+- `store(newValue) -> newValue`
 
     - Accepts a new value to set the store to.
     - Returns the newly stored value.
