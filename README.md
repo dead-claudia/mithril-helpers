@@ -1,6 +1,6 @@
 # mithril-helpers
 
-Just a collection of Mithril helpers, all written in pure ES5.
+Just a collection of Mithril helpers. Each helper features two variants: `.js` for a CommonJS + global bundle targeting a baseline of ES5.1 and `.mjs` for an ES module targeting a baseline of ES6, and they all feature TypeScript definitions alongside them. The `index.js` file specifically targets CommonJS only. No direct support for AMD/RequireJS loaders exist.
 
 ## Installation
 
@@ -21,10 +21,10 @@ If you come up with any other things that you feel should be included, or you fi
 
 If you want to implement something yourself, definitely go for it and send a PR. Just note the following (for legal reasons): when you submit a pull request, you agree to license your contribution under the relevant license(s) in this repository, and you also agree that you have sufficient rights to do so.
 
-Also, make sure that if you want to add a helper, your helpers do one thing and one thing only. They should be almost zero-cost to add to a project.
+Also, make sure that if you want to add a helper, your helpers should do one thing and one thing only. They should be almost zero-cost to add to a project, and ideally they shouldn't even depend on other helpers.
 
 ## License
 
-Everything here is licensed under ISC except for the `/migrate` modules, whose licenses are specified in those files. Feel free to use it however you wish (within those restrictions, of course).
+All the source code here is licensed under Blue Oak Model License 1.0.0 except for the `/migrate` modules, whose licenses are specified in those files (at the time of writing, it's a single file licensed MIT). Feel free to use it however you wish (within these restrictions, of course). The documentation is licensed under CC-BY 4.0 unless otherwise specified.
 
-See [here](https://github.com/isiahmeadows/mithril-helpers/tree/master/LICENSE.txt) for the license.
+See [here](https://github.com/isiahmeadows/mithril-helpers/tree/master/LICENSE.txt) for precise details on the licenses for each as well as their legal texts.

@@ -1,27 +1,22 @@
 /**
- * A getter/setter store.
+ * A getter/setter store that invokes a redraw whenever it's set.
  */
 export interface Store<T> {
-    get(): T;
-    set<U extends T>(newValue: U): U;
+    (): T;
+    <U extends T>(newValue: U): U;
 }
 
 /**
- * A store change observer.
+ * Create a new store with an initial value of `undefined`.
  */
-export interface OnChange<T> {
-    (newValue: T, oldValue: T): any;
-}
+export default function makeStore<T>(): Store<T | undefined>;
 
 /**
- * Create a new store, optionally with a change observer.
+ * Create a new store with an initial value.
  */
-export default function makeStore<T>(
-    initial?: void,
-    onchange?: OnChange<T | void>
-): Store<T | void>;
+export default function makeStore<T>(initial: T): Store<T>;
 
 /**
- * Create a new store, optionally with a change observer.
+ * Create a new store with an initial value and a change observer.
  */
-export default function makeStore<T>(initial: T, onchange?: OnChange<T>): Store<T>;
+export default function makeStore<T>(initial: T, onchange: (next: T, prev: T) => any): Store<T>;
