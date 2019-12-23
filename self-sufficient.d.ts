@@ -5,14 +5,8 @@
 /// <reference types="mithril" />
 import * as Mithril from "mithril";
 
-/**
- * An event-like object, mimicking Mithril's.
- */
-export interface MithrilEvent extends Event {
-    redraw?: boolean;
-}
-
 export interface SelfSufficientParams {
+    root: Mithril.Vnode<any, any>;
     view(state: SelfSufficientState): Mithril.Vnode<any, any>;
 }
 
@@ -23,10 +17,6 @@ export interface SelfSufficientState {
     safe(): boolean;
     redraw(): void;
     redrawSync(): void;
-    link<E>(
-        handler: ((event: E & MithrilEvent) => any) |
-            {handleEvent(event: E & MithrilEvent): any}
-    ): (event: E) => void;
 }
 
 declare const SelfSufficient: Mithril.ComponentTypes<SelfSufficientParams, any>
