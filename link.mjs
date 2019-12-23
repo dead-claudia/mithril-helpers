@@ -10,6 +10,8 @@ import Vnode from "mithril/render/vnode"
 
 export default function link(key, ...children) {
     return Vnode("[", null, null, [
-        Vnode("[", key, null, Vnode.normalizeChildren(children))
+        Vnode("[", typeof key === "symbol" ? key : "" + key, null,
+            Vnode.normalizeChildren(children)
+        )
     ])
 }
