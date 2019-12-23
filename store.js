@@ -14,7 +14,7 @@
     } else if (typeof m !== "function") {
         throw new Error("Mithril must be loaded first!")
     } else {
-        (m.helpers || (m.helpers = {})).store = makeStore
+        (m.helpers || (m.helpers = {})).makeStore = makeStore
     }
 
     // So engines don't think to "optimize" the memory layout by making a shared
