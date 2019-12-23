@@ -9,17 +9,46 @@
 
 import Vnode from "mithril/render/vnode"
 
-export default function each(list, by, child) {
-    const children = []
-    const found = Object.create(null)
+// This is coded specifically for efficiency, so it's necessarily a bit messy.
+// The `Array.from` calls are also written to be easily inlined by JIT engines.
+//
+// Here's it simplified, with roughly equivalent semantics:
+//
+// ```js
+// export default function each(list, by, view) {
+//     // So it doesn't get coerced in the loop
+//     if (typeof by !== "function" && typeof by !== "symbol") by = "" + by
+//     const found = Object.create(null)
+//     return m.fragment(Array.from(list, (item, i) => {
+//         let key = typeof by === "function" ? by(item, i) : item[by]
+//         if (typeof key !== "symbol") key = "" + key
+//         if (found[key]) throw new Error("Duplicate keys are not allowed.")
+//         found[key] = true
+//         return m.fragment({key}, view(item, i))
+//     }))
+// }
+// ```
 
-    for (let i = 0; i < list.length; i++) {
-        const item = list[i]
-        let key = by(item, i)
-        if (typeof key !== "symbol") key = "" + key
-        if (key in found) throw new Error("Duplicate keys are not allowed.")
-        found[key] = true
-        children.push(Vnode("[", key, null, [Vnode.normalize(child(item, i))], null, null)
+function cast(view, found, item, i, key) {
+    if (typeof key !== "symbol") key = "" + key
+    if (found[key]) throw new Error("Duplicate keys are not allowed.")
+    found[key] = true
+    return Vnode("[", key, null, [Vnode.normalize(view(item, i))], null, null)
+}
+
+export default function each(list, by, view) {
+    const found = Object.create(null)
+    let children
+    if (typeof by === "function") {
+        children = Array.from(list, (item, i) =>
+            cast(view, found, item, i, by(item, i))
+        )
+    } else {
+        // So it doesn't get coerced in the loop
+        if (typeof by !== "symbol") by = "" + by
+        children = Array.from(list, (item, i) =>
+            cast(view, found, item, i, item[by])
+        )
     }
 
     return Vnode("[", null, null, children, null, null)
