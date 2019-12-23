@@ -11,18 +11,53 @@
     "use strict"
 
     var Vnode
+    var from = Array.from || function (list, func) {
+        var result = []
+        for (var i = 0; i < list.length; i++) result.push(func(list[i], i))
+        return result
+    }
 
-    function each(list, by, child) {
-        var children = []
+    // This is coded specifically for efficiency, so it's necessarily a bit
+    // messy. The `Array.from` calls are also written to be easily inlined by
+    // JIT engines.
+    //
+    // Here's it simplified, with roughly equivalent semantics:
+    //
+    // ```js
+    // function each(list, by, view) {
+    //     // So it doesn't get coerced in the loop
+    //     if (typeof by !== "function" && typeof by !== "symbol") by = "" + by
+    //     var found = Object.create(null)
+    //     return m.fragment(from(list, function (item, i) {
+    //         var key = typeof by === "function" ? by(item, i) : item[by]
+    //         if (typeof key !== "symbol") key = "" + key
+    //         if (found[key]) throw new Error("Duplicate keys are not allowed.")
+    //         found[key] = true
+    //         return m.fragment({key: key}, view(item, i))
+    //     }))
+    // }
+    // ```
+
+    function cast(view, found, item, i, key) {
+        if (typeof key !== "symbol") key = "" + key
+        if (found[key]) throw new Error("Duplicate keys are not allowed.")
+        found[key] = true
+        return Vnode("[", key, null, [Vnode.normalize(view(item, i))], null, null)
+    }
+
+    function each(list, by, view) {
         var found = Object.create(null)
-
-        for (let i = 0; i < list.length; i++) {
-            var item = list[i]
-            var key = by(item, i)
-            if (typeof key !== "symbol") key = "" + key
-            if (key in found) throw new Error("Duplicate keys are not allowed.")
-            found[key] = true
-            children.push(Vnode("[", key, null, [Vnode.normalize(child(item, i))], null, null)
+        var children
+        if (typeof by === "function") {
+            children = from(list, function (item, i) {
+                return cast(view, found, item, i, by(item, i))
+            })
+        } else {
+            // So it doesn't get coerced in the loop
+            if (typeof by !== "symbol") by = "" + by
+            children = from(list, function (item, i) {
+                return cast(view, found, item, i, item[by])
+            })
         }
 
         return Vnode("[", null, null, children, null, null)
