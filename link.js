@@ -11,11 +11,14 @@
 
     var Vnode
 
-    function link(key) {
+    function link(key, first) {
         if (typeof key !== "symbol") key = "" + key
-        var children = []
-        for (var i = 1; i < arguments.length; i++) {
-            children.push(Vnode.normalize(arguments[i]))
+        var children = first
+        if (!Array.isArray(children)) {
+            children = []
+            for (var i = 1; i < arguments.length; i++) {
+                children.push(Vnode.normalize(arguments[i]))
+            }
         }
         return Vnode("[", null, null, [
             Vnode("[", key, null, children)
