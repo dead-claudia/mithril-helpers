@@ -38,7 +38,7 @@ function TextBox() {
 
 ## Usage
 
-- `m.helpers.store(initial?, onchange?) -> store`
+- `m.helpers.makeStore(initial?, onchange?) -> store`
 
     - Accepts an optional initial value, defaulting to `undefined`.
     - Accepts an optional `(old, new) -> any` change listener, defaulting to a no-op.
