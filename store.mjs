@@ -1,9 +1,7 @@
 /**
  * Use this if you want the ease of use you'd get with v0.2's `m.prop()`, but
- * you don't want to pull in an entire stream library just to have it.
- *
- * It's also safe against recursive modifications when observing - they instead
- * don't notify like they would normally, avoiding a quick stack overflow.
+ * you don't want to pull in an entire stream library just to have it. It also
+ * integrates with `m.redraw`, so it works in a lot more situations
  */
 
 // So engines don't think to "optimize" the memory layout by making a shared
@@ -12,34 +10,33 @@
 // Note: this uses `onchange` itself as the lock, so it doesn't require an extra
 // variable.
 function makeObserved(store, onchange) {
-    return {
-        get: () => store,
-        set: value => {
-            const old = store
-            const func = onchange
+    return function () {
+        if (!arguments.length) return store
+        const old = store
+        const func = onchange
+        const value = (store = arguments[0])
 
-            store = value
-            if (func) {
-                onchange = null
-                try {
-                    func(store = value, old)
-                } finally {
-                    onchange = func
-                }
+        if (func) {
+            onchange = null
+            try {
+                func(value, old)
+            } finally {
+                onchange = func
             }
-
-            return value
-        },
+        }
+        
+        return value
     }
 }
 
 export default function makeStore(store, onchange) {
     if (typeof onchange === "function") {
-        return makeObserved(store, onchange)
+        // Attribute used here for whenever Terser finally implements this
+        // https://github.com/terser/terser/issues/350
+        return /*@__NOINLINE__*/ makeObserved(store, onchange)
     } else {
-        return {
-            get: () => store,
-            set: value => store = value,
+        return function () {
+            return arguments.length ? (store = arguments[0]) : store
         }
     }
 }
