@@ -24,23 +24,17 @@
 })(function (render, Vnode) {
     "use strict"
 
-    // Get the correct scheduling function
-    var timeout = typeof requestAnimationFrame === "function"
-        ? requestAnimationFrame
-        : setTimeout
-
-    // Set up the initial state
-    var last = 0
     var locked = false
-    var vnodes = []
-    var states = []
+    var frameId, insts
+
+    function invokeRender(inst) {
+        render(inst.s.dom, [(0, inst.s.attrs.view)(new State(inst))], inst.r)
+    }
 
     function invokeRedraw() {
-        var prev = states
+        var prev = insts
 
-        vnodes = []
-        states = []
-        last = Date.now()
+        insts = frameId = null
         locked = true
 
         for (var i = 0; i < prev.length; i++) {
@@ -56,152 +50,80 @@
         locked = false
     }
 
-    function schedule(state) {
-        // 60fps translates to ~16ms per frame
-        if (!vnodes.length) timeout(invokeRedraw, 16 - Date.now() - last)
-        var index = vnodes.indexOf(state._)
+    function schedule(inst) {
+        if (insts == null) {
+            insts = []
+            frameId = requestAnimationFrame(invokeRedraw)
+        }
+        var index = insts.indexOf(inst)
 
         if (index >= 0) {
             // In case this winds up spammy, I can't take the naïve approach.
-            for (var end = vnodes.length - 1; index < end; index++) {
-                vnodes[index] = vnodes[index + 1]
-                states[index] = states[index + 1]
+            for (var end = insts.length - 1; index < end; index++) {
+                insts[index] = insts[index + 1]
             }
-            vnodes[end] = state._
-            states[end] = state
+            insts[end] = inst
         } else {
-            vnodes.push(state._)
-            states.push(state)
+            insts.push(inst)
         }
     }
 
-    function remove(vnode) {
-        var index = vnodes.indexOf(vnode)
-
-        if (index >= 0) {
-            vnodes.splice(index, 0)
-            states.splice(index, 0)
+    function unschedule(inst) {
+        if (insts == null) return
+        if (insts.length === 1) {
+            if (insts[0] !== inst) return
+            cancelAnimationframe(frameId)
+            insts = frameId = null
+        } else {
+            var index = insts.indexOf(inst)
+            if (index >= 0) insts.splice(index, 0)
         }
     }
 
-    function callHook(vnode) {
-        var original = vnode.state
+    function update() {
         try {
-            return this.apply(original, arguments)
-        } finally {
-            if (vnode.state !== original) {
-                throw new Error("`vnode.state` must not be modified")
-            }
-        }
-    }
-
-    function callView(vnode, state) {
-        var ret = Vnode.normalize((0, vnode.attrs.view)(state))
-
-        if (
-            ret == null || typeof ret !== "object" ||
-            typeof ret.tag !== "string" || ret.tag === "#" ||
-            ret.tag === "<" || ret.tag === "["
-        ) {
-            throw new TypeError("You must return a DOM vnode!")
-        }
-
-        if (ret.key != null) {
-            throw new TypeError(
-                "You should set the key on the SelfSufficient component, not " +
-                "the instance's view."
-            )
-        }
-
-        return ret
-    }
-
-    function invokeRender(state) {
-        var child = callView(state._, state)
-
-        // We have to make sure Mithril sees the correct vnode state.
-        child.state = state._.instance.state
-        child.events = state._.instance.events
-        child.dom = state._.instance.dom
-        child.domSize = state._.instance.domSize
-
-        // We have to make sure Mithril sees the correct vnode to diff
-        state._.instance = child
-
-        if (child.attrs != null &&
-                typeof child.attrs.onbeforeupdate === "function") {
-            var forceUpdate = callHook.call(
-                child.attrs.onbeforeupdate,
-                child, child
-            )
-
-            if (forceUpdate !== undefined && !forceUpdate) return
-        }
-
-        render(child.dom, child.children)
-
-        if (typeof child.attrs.onupdate === "function") {
-            callHook.call(child.attrs.onupdate, child)
-        }
-    }
-
-    function State(vnode) {
-        this._ = vnode
-    }
-
-    State.prototype.safe = function () {
-        return this._ != null && this._.dom != null && !locked
-    }
-
-    State.prototype.redraw = function () {
-        if (this.safe()) schedule(this)
-    }
-
-    State.prototype.redrawSync = function () {
-        if (locked) throw new Error("State is currently locked!")
-        if (!this.safe()) {
-            throw new TypeError("Can't redraw without a DOM node!")
-        }
-        // 60fps translates to ~16ms per frame
-        if (!vnodes.length) timeout(invokeRedraw, 16 - Date.now() - last)
-        else remove(this._)
-        locked = true
-        try {
-            invokeRender(this._, this)
+            unschedule(this)
+            invokeRender(this)
         } finally {
             locked = false
         }
     }
 
-    State.prototype.link = function (callback) {
-        var self = this
-
-        return function (e) {
-            if (typeof callback === "function") callback(e)
-            else callback.handleEvent(e)
-
-            if (e.redraw !== false) {
-                e.redraw = false
-                schedule(self)
-            }
-        }
+    function State(inst) { this._ = inst }
+    State.prototype.safe = function () {
+        return this._.s != null && !locked
     }
-
-    function unlock(vnode) {
-        // So Mithril believes this has already been rendered to.
-        vnode.dom.vnodes = vnode.children
-        locked = false
+    State.prototype.redraw = function () {
+        if (this._.s != null && !locked) schedule(this._)
+    }
+    State.prototype.redrawSync = function () {
+        if (locked) throw new Error("State is currently locked!")
+        if (this._.s == null) {
+            throw new TypeError("Can't redraw without a DOM node!")
+        }
+        locked = true
+        update.call(this._)
     }
 
     return {
-        oncreate: unlock,
-        onupdate: unlock,
-        onremove: remove,
+        oninit(vnode) {
+            var self = this
+            this.s = vnode
+            this.r = function () { schedule(self) }
+        },
 
-        view: function (vnode) {
+        view(vnode) {
             locked = true
-            remove(vnode)
-            return callView(vnode, new State(vnode))
-        }
+            this.s = vnode
+            return vnode.attrs.root
+        },
+
+        oncreate: update,
+        onupdate: update,
+
+        onremove() {
+            this.s = this.r = null
+            unschedule(this)
+        },
     }
 })
