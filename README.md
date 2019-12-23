@@ -25,6 +25,6 @@ Also, make sure that if you want to add a helper, your helpers should do one thi
 
 ## License
 
-Everything here is licensed under ISC except for the `/migrate` modules, whose licenses are specified in those files. Feel free to use it however you wish (within those restrictions, of course).
+All the source code here is licensed under Blue Oak Model License 1.0.0 except for the `/migrate` modules, whose licenses are specified in those files (at the time of writing, it's a single file licensed MIT). Feel free to use it however you wish (within these restrictions, of course). The documentation is licensed under CC-BY 4.0 unless otherwise specified.
 
-See [here](https://github.com/isiahmeadows/mithril-helpers/tree/master/LICENSE.txt) for the license.
+See [here](https://github.com/isiahmeadows/mithril-helpers/tree/master/LICENSE.txt) for precise details on the licenses for each as well as their legal texts.
