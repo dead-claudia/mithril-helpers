@@ -16,13 +16,9 @@ const p = Promise.resolve()
 
 export default function makeRedraw(state) {
     let ready = false
-
-    function redraw() {
-        if (ready) {
-            if (state != null) state.redraw()
-            else p.then(mithril.redraw)
-        }
-    }
+    const redraw = state != null
+        ? () => { if (ready) state.redraw() }
+        : () => { if (ready) p.then(mithril.redraw) }
 
     redraw.ready = () => {
         ready = true

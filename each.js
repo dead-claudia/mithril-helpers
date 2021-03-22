@@ -11,9 +11,26 @@
     "use strict"
 
     var Vnode
+    var symbolIterator = typeof Symbol === "function"
+        ? Symbol.iterator
+        : null
     var from = Array.from || function (list, func) {
         var result = []
-        for (var i = 0; i < list.length; i++) result.push(func(list[i], i))
+        if (
+            symbolIterator != null &&
+            typeof list[symbolIterator] === "function"
+        ) {
+            var iter = list[symbolIterator]()
+            var i = 0
+            for (var next = iter.next(); !next.done; next = iter.next()) {
+                result.push(func(next.value, i))
+                i++
+            }
+        } else {
+            for (var i = 0; i < list.length; i++) {
+                result.push(func(list[i], i))
+            }
+        }
         return result
     }
 

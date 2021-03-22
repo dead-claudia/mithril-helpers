@@ -72,7 +72,7 @@
         if (insts == null) return
         if (insts.length === 1) {
             if (insts[0] !== inst) return
-            cancelAnimationframe(frameId)
+            cancelAnimationFrame(frameId)
             insts = frameId = null
         } else {
             var index = insts.indexOf(inst)

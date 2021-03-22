@@ -31,13 +31,13 @@ import Vnode from "mithril/render/vnode"
 
 function cast(view, found, item, i, key) {
     if (typeof key !== "symbol") key = "" + key
-    if (found[key]) throw new Error("Duplicate keys are not allowed.")
-    found[key] = true
+    if (found.has(key)) throw new Error("Duplicate keys are not allowed.")
+    found.add(key)
     return Vnode("[", key, null, [Vnode.normalize(view(item, i))], null, null)
 }
 
 export default function each(list, by, view) {
-    const found = Object.create(null)
+    const found = new Set()
     let children
     if (typeof by === "function") {
         children = Array.from(list, (item, i) =>

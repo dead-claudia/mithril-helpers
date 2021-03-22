@@ -28,13 +28,9 @@
 
     function makeRedraw(state) {
         var ready = false
-
-        function redraw() {
-            if (ready) {
-                if (state != null) state.redraw()
-                else p.then(mithril.redraw)
-            }
-        }
+        var redraw = state != null
+            ? function () { if (ready) state.redraw() }
+            : function () { if (ready) p.then(mithril.redraw) }
 
         redraw.ready = function () {
             ready = true

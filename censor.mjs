@@ -10,46 +10,25 @@ const magic = [
     "onbeforeremove", "onremove",
 ]
 
-function includesOwn(attrs, keys) {
-    if (!Array.isArray(keys)) return false
-    for (let i = 0; i < keys.length; i++) {
-        if (hasOwn.call(attrs, keys[i])) return true
-    }
-    return false
-}
-
-function filterOne(attrs, list) {
-    const result = {}
-
-    for (const key in attrs) {
-        if (hasOwn.call(attrs, key) && list.indexOf(key) < 0) {
-            result[key] = attrs[key]
-        }
-    }
-
-    return result
-}
-
 export default function censor(attrs, extras) {
-    if (includesOwn(attrs, extras)) {
-        if (includesOwn(attrs, extras)) {
+    const excludeSet = new Set(magic)
+    if (extras != null) {
+        for (const item of extras) excludeSet.add(item)
+    }
+
+    for (let i = 0; i < exclude.length; i++) {
+        if (hasOwn.call(attrs, exclude[i])) {
             const result = {}
 
             for (const key in attrs) {
-                if (hasOwn.call(attrs, key) &&
-                        magic.indexOf(key) < 0 &&
-                        extras.indexOf(key) < 0) {
+                if (hasOwn.call(attrs, key) && !excludeSet.has(key)) {
                     result[key] = attrs[key]
                 }
             }
 
             return result
-        } else {
-            return filterOne(attrs, magic)
         }
-    } else if (hasExtras) {
-        return filterOne(attrs, extras)
-    } else {
-        return attrs
     }
+
+    return attrs
 }
