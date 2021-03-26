@@ -6,5 +6,5 @@ import * as Mithril from "mithril";
  */
 export default function link(
     key: PropertyKey,
-    ...children: Array<Mithril.Vnode<any, any>>
+    ...children: Array<Mithril.Children>
 ): Mithril.Vnode<any, any>;

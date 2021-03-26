@@ -17,11 +17,11 @@
         if (!Array.isArray(children)) {
             children = []
             for (var i = 1; i < arguments.length; i++) {
-                children.push(Vnode.normalize(arguments[i]))
+                children.push(arguments[i])
             }
         }
         return Vnode("[", null, null, [
-            Vnode("[", key, null, children)
+            Vnode("[", key, null, Vnode.normalizeChildren(children))
         ])
     }
 

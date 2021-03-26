@@ -7,7 +7,7 @@ import * as Mithril from "mithril";
 
 export interface SelfSufficientParams {
     root: Mithril.Vnode<any, any>;
-    view(state: SelfSufficientState): Mithril.Vnode<any, any>;
+    view(state: SelfSufficientState): Mithril.Children;
 }
 
 /**

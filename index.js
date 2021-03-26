@@ -18,3 +18,7 @@ exports.makeStore = require("./store.js")
 exports.makeRedraw = require("./redraw.js")
 exports.each = require("./each.js")
 exports.link = require("./link.js")
+var match = require("./match.js")
+exports.when = match.when
+exports.cond = match.cond
+exports.match = match.match

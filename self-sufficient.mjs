@@ -12,99 +12,98 @@ import Vnode from "mithril/render/Vnode"
 let locked = false
 let frameId, insts
 
-function invokeRender(inst) {
-    render(inst.s.dom, [(0, inst.s.attrs.view)(new State(inst))], inst.r)
-}
-
 function invokeRedraw() {
     const prev = insts
 
     insts = frameId = null
     locked = true
 
-    for (let i = 0; i < prev.length; i++) {
+    prev.forEach(inst => {
         // We need at least some fault tolerance - it'd be weird if someone
         // else's errors prevented one of our redraws.
         try {
-            invokeRender(prev[i])
+            const inst = prev[i]
+            render(
+                inst.s.dom,
+                [(0, inst.s.attrs.view)(inst)],
+                inst.r
+            )
         } catch (e) {
             setTimeout(() => { throw e }, 0)
         }
-    }
+    })
 
     locked = false
 }
 
-function schedule(inst) {
-    if (insts == null) {
-        insts = []
-        frameId = requestAnimationFrame(invokeRedraw)
-    }
-    let index = insts.indexOf(inst)
-
-    if (index >= 0) {
-        // In case this winds up spammy, I can't take the naïve approach.
-        for (const end = insts.length - 1; index < end; index++) {
-            insts[index] = insts[index + 1]
-        }
-        insts[end] = inst
-    } else {
-        insts.push(inst)
-    }
-}
-
 function unschedule(inst) {
     if (insts == null) return
-    if (insts.length === 1) {
-        if (insts[0] !== inst) return
+    if (insts.size === 1) {
+        // Skip the mutation
+        if (!insts.has(inst)) return
         cancelAnimationFrame(frameId)
         insts = frameId = null
     } else {
-        const index = insts.indexOf(inst)
-        if (index >= 0) insts.splice(index, 0)
+        insts.delete(inst)
     }
 }
 
-function update() {
-    try {
-        unschedule(this)
-        invokeRender(this)
-    } finally {
-        locked = false
-    }
-}
-
-class State {
-    constructor(inst) { this._ = inst }
-    safe() { return this._.s != null && !locked }
-    redraw() { if (this._.s != null && !locked) schedule(this._) }
-    redrawSync() {
-        if (locked) throw new Error("State is currently locked!")
-        if (this._.s == null) {
-            throw new TypeError("Can't redraw without a DOM node!")
-        }
-        locked = true
-        update.call(this._)
-    }
-}
-
-export default {
-    oninit(vnode) {
+export default class SelfSufficient {
+    constructor(vnode) {
         this.s = vnode
-        this.r = () => { schedule(this) }
-    },
+        this.r = () => { this.redraw() }
+    }
 
     view(vnode) {
         locked = true
         this.s = vnode
         return vnode.attrs.root
-    },
+    }
 
-    oncreate: update,
-    onupdate: update,
+    oncreate(vnode) {
+        this.onupdate(vnode)
+    }
 
-    onremove() {
+    onupdate(vnode) {
+        if (locked) throw new Error("State is currently locked!")
+        unschedule(this)
+        locked = true
+        try {
+            render(vnode.dom, [(0, vnode.attrs.view)(this)], this.r)
+        } finally {
+            locked = false
+        }
+    }
+
+    onremove(vnode) {
         this.s = this.r = null
         unschedule(this)
-    },
+        render(vnode.dom)
+    }
+
+    // Public API
+    safe() {
+        return this.s != null && !locked
+    }
+
+    redraw() {
+        if (this.s != null && !locked) {
+            if (insts == null) {
+                insts = new Set([this])
+                frameId = requestAnimationFrame(invokeRedraw)
+            } else {
+                insts.add(this)
+            }
+        }
+    }
+
+    redrawSync() {
+        if (this.s == null) {
+            throw new TypeError(
+                "Cannot call after unmount, and a DOM node must be " +
+                "accessible from the rendered view."
+            )
+        }
+        this.onupdate(this.s)
+    }
 }

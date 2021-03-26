@@ -16,4 +16,5 @@ If you wish to bundle these, you can just concatenate the ones you use or use Br
 - [`mithril-helpers/redraw` - `makeRedraw(state?)`](./redraw.md)
 - [`mithril-helpers/each` - `each(list, by, view)`](./each.md)
 - [`mithril-helpers/link` - `link(key, ...children)`](./link.md)
+- [`mithril-helpers/match` - `when(cond, then, orElse)`, `cond(...cases)` and `match(value, ...cases)`](./match.md)
 - [`mithril-helpers/migrate` - Mithril migration utilities](./migrate.md)

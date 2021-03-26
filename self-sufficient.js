@@ -27,10 +27,6 @@
     var locked = false
     var frameId, insts
 
-    function invokeRender(inst) {
-        render(inst.s.dom, [(0, inst.s.attrs.view)(new State(inst))], inst.r)
-    }
-
     function invokeRedraw() {
         var prev = insts
 
@@ -41,31 +37,18 @@
             // We need at least some fault tolerance - it'd be weird if someone
             // else's errors prevented one of our redraws.
             try {
-                invokeRender(prev[i])
+                var inst = prev[i]
+                render(
+                    inst.s.dom,
+                    [(0, inst.s.attrs.view)(inst)],
+                    inst.r
+                )
             } catch (e) {
                 setTimeout(function () { throw e }, 0)
             }
         }
 
         locked = false
-    }
-
-    function schedule(inst) {
-        if (insts == null) {
-            insts = []
-            frameId = requestAnimationFrame(invokeRedraw)
-        }
-        var index = insts.indexOf(inst)
-
-        if (index >= 0) {
-            // In case this winds up spammy, I can't take the naïve approach.
-            for (var end = insts.length - 1; index < end; index++) {
-                insts[index] = insts[index + 1]
-            }
-            insts[end] = inst
-        } else {
-            insts.push(inst)
-        }
     }
 
     function unschedule(inst) {
@@ -80,50 +63,75 @@
         }
     }
 
-    function update() {
+    function SelfSufficient(vnode) {
+        var self = this
+        this.s = vnode
+        this.r = function () { self.redraw() }
+    }
+
+    SelfSufficient.prototype.view = function (vnode) {
+        locked = true
+        this.s = vnode
+        return vnode.attrs.root
+    }
+
+    SelfSufficient.prototype.oncreate =
+    SelfSufficient.prototype.onupdate = function (vnode) {
+        if (locked) throw new Error("State is currently locked!")
+        unschedule(this)
+        locked = true
         try {
-            unschedule(this)
-            invokeRender(this)
+            render(vnode.dom, [(0, vnode.attrs.view)(this)], this.r)
         } finally {
             locked = false
         }
     }
 
-    function State(inst) { this._ = inst }
-    State.prototype.safe = function () {
-        return this._.s != null && !locked
+    SelfSufficient.prototype.onremove = function (vnode) {
+        this.s = this.r = null
+        unschedule(this)
+        render(vnode.dom)
     }
-    State.prototype.redraw = function () {
-        if (this._.s != null && !locked) schedule(this._)
+
+    // Public API
+    SelfSufficient.prototype.safe = function () {
+        return this.s != null && !locked
     }
-    State.prototype.redrawSync = function () {
-        if (locked) throw new Error("State is currently locked!")
-        if (this._.s == null) {
-            throw new TypeError("Can't redraw without a DOM node!")
+
+    SelfSufficient.prototype.redraw = function () {
+        if (this.s != null && !locked) {
+            if (insts == null) {
+                insts = [this]
+                frameId = requestAnimationFrame(invokeRedraw)
+            } else {
+                var end = insts.length - 1
+                // Already at the end, nothing left to do.
+                if (insts[end] === this) return
+                var index = insts.indexOf(this)
+
+                if (index >= 0) {
+                    // In case this winds up spammy, I can't take the naïve approach.
+                    while (index < end) {
+                        insts[index] = insts[index + 1]
+                        index++
+                    }
+                    insts[end] = this
+                } else {
+                    insts.push(inst)
+                }
+            }
         }
-        locked = true
-        update.call(this._)
     }
 
-    return {
-        oninit(vnode) {
-            var self = this
-            this.s = vnode
-            this.r = function () { schedule(self) }
-        },
-
-        view(vnode) {
-            locked = true
-            this.s = vnode
-            return vnode.attrs.root
-        },
-
-        oncreate: update,
-        onupdate: update,
-
-        onremove() {
-            this.s = this.r = null
-            unschedule(this)
-        },
+    SelfSufficient.prototype.redrawSync = function () {
+        if (this.s == null) {
+            throw new TypeError(
+                "Cannot call after unmount, and a DOM node must be " +
+                "accessible from the rendered view."
+            )
+        }
+        this.onupdate(this.s)
     }
+
+    return SelfSufficient
 })
