@@ -9,20 +9,19 @@
 import render from "mithril/render"
 import Vnode from "mithril/render/Vnode"
 
-let locked = false
 let frameId, insts
 
 function invokeRedraw() {
-    const prev = insts
+    const scheduled = insts
 
     insts = frameId = null
-    locked = true
 
-    prev.forEach(inst => {
+    scheduled.forEach(inst => {
         // We need at least some fault tolerance - it'd be weird if someone
         // else's errors prevented one of our redraws.
         try {
             const inst = prev[i]
+            inst.l = true
             render(
                 inst.s.dom,
                 [(0, inst.s.attrs.view)(inst)],
@@ -30,10 +29,10 @@ function invokeRedraw() {
             )
         } catch (e) {
             setTimeout(() => { throw e }, 0)
+        } finally {
+            inst.l = false
         }
     })
-
-    locked = false
 }
 
 function unschedule(inst) {
@@ -52,10 +51,10 @@ export default class SelfSufficient {
     constructor(vnode) {
         this.s = vnode
         this.r = () => { this.redraw() }
+        this.l = null
     }
 
     view(vnode) {
-        locked = true
         this.s = vnode
         return vnode.attrs.root
     }
@@ -65,29 +64,31 @@ export default class SelfSufficient {
     }
 
     onupdate(vnode) {
-        if (locked) throw new Error("State is currently locked!")
+        this.s = vnode
+        if (this.l) throw new Error("State is currently locked!")
         unschedule(this)
-        locked = true
+        this.l = true
         try {
             render(vnode.dom, [(0, vnode.attrs.view)(this)], this.r)
         } finally {
-            locked = false
+            this.l = false
         }
     }
 
     onremove(vnode) {
         this.s = this.r = null
+        this.l = true
         unschedule(this)
         render(vnode.dom)
     }
 
     // Public API
     safe() {
-        return this.s != null && !locked
+        return !this.l
     }
 
     redraw() {
-        if (this.s != null && !locked) {
+        if (!this.l) {
             if (insts == null) {
                 insts = new Set([this])
                 frameId = requestAnimationFrame(invokeRedraw)
@@ -98,12 +99,8 @@ export default class SelfSufficient {
     }
 
     redrawSync() {
-        if (this.s == null) {
-            throw new TypeError(
-                "Cannot call after unmount, and a DOM node must be " +
-                "accessible from the rendered view."
-            )
-        }
+        if (this.s == null) throw new TypeError("Can't redraw after unmount.")
+        if (this.l == null) throw new TypeError("Can't redraw without a root.")
         this.onupdate(this.s)
     }
 }
