@@ -117,7 +117,7 @@
                     }
                     insts[end] = this
                 } else {
-                    insts.push(inst)
+                    insts.push(this)
                 }
             }
         }
